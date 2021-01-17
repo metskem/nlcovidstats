@@ -1,67 +1,105 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/metskem/nlcovidstats/conf"
-	"github.com/metskem/nlcovidstats/model"
 	"github.com/metskem/nlcovidstats/util"
-	"io/ioutil"
 	"log"
 	"os"
+	"time"
 )
 
-var outputFile = "output.json"
-
 func main() {
-	if len(os.Args) != 3 {
-		log.Fatalf("specify 2 arguments: <input file> <City Name>")
-	}
-	inputFile := os.Args[1]
-	city := os.Args[2]
-	log.Printf("reading file %s", inputFile)
-	file, err := ioutil.ReadFile(inputFile)
-	if err != nil {
-		fmt.Printf("failed reading input file %s: %s\n", inputFile, err)
-		os.Exit(8)
-	}
-	log.Printf("json-parsing file %s", inputFile)
-	err = json.Unmarshal(file, &conf.RawStats)
-	if err != nil {
-		fmt.Printf("failed unmarshalling json from file %s, error: %s\n", inputFile, err)
-		os.Exit(8)
-	}
-	log.Printf("we found %d elements", len(conf.RawStats))
 
-	for _, rawStat := range conf.RawStats {
-		stat := model.Stat{
-			DateOfPublication:      rawStat.DateOfPublication,
-			MunicipalityName:       rawStat.MunicipalityName,
-			Province:               rawStat.Province,
-			SecurityRegionName:     rawStat.SecurityRegionName,
-			MunicipalHealthService: rawStat.MunicipalHealthService,
-			TotalReported:          rawStat.TotalReported,
-			HospitalAdmission:      rawStat.HospitalAdmission,
-			Deceased:               rawStat.Deceased,
-		}
-		conf.Stats = append(conf.Stats, stat)
-	}
-	log.Print("json marshalling...")
-	ba, err := json.MarshalIndent(conf.Stats, "", " ")
+	conf.EnvironmentComplete()
+
+	var err error
+
+	util.Bot, err = tgbotapi.NewBotAPI(conf.BotToken)
 	if err != nil {
-		log.Printf("failed json marshalling, error: %s", err)
+		log.Panic(err.Error())
+	}
+
+	util.Bot.Debug = conf.Debug
+
+	util.Me, err = util.Bot.GetMe()
+	meDetails := "unknown"
+	if err == nil {
+		meDetails = fmt.Sprintf("BOT: ID:%d UserName:%s FirstName:%s LastName:%s", util.Me.ID, util.Me.UserName, util.Me.FirstName, util.Me.LastName)
+		log.Printf("Started Bot: %s, version:%s, build time:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
 	} else {
-		log.Printf("writing to file %s", outputFile)
-		err = ioutil.WriteFile(outputFile, ba, os.ModePerm)
+		log.Printf("Bot.GetMe() failed: %v", err)
+	}
+
+	err = util.LoadInputFile(conf.InputFile)
+	if err != nil {
+		log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
+	}
+
+	// refresh the inputfile every day at 15:25
+	go func() {
+		ctx := context.Background()
+		now := time.Now()
+		startTime, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%d-%s-%s %s", now.Year(), fmt.Sprintf("%02d", now.Month()), fmt.Sprintf("%02d", now.Day()), conf.RefreshTime))
 		if err != nil {
-			log.Printf("failed to write output file %s, error: %s", outputFile, err)
+			log.Printf("failed parsing start datetime, error: %s", err)
 		} else {
-			file, err := util.CreateChartFile(city)
-			if err != nil {
-				log.Printf("failed to create graph, error: %s", err)
-			} else {
-				log.Printf("graph for %s rendered to file %s", city, file.Name())
+			delay := time.Hour * 24
+			for _ = range util.Cron(ctx, startTime, delay) {
+				err = util.LoadInputFile(conf.InputFile)
+				if err != nil {
+					log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
+				}
 			}
 		}
+	}()
+	newUpdate := tgbotapi.NewUpdate(0)
+	newUpdate.Timeout = 60
+
+	updatesChan, err := util.Bot.GetUpdatesChan(newUpdate)
+	if err == nil {
+		// announce that we are live again
+		log.Printf("%s has been started, buildtime: %s", util.Me.UserName, conf.BuildTime)
+
+		// start listening for messages, and optionally respond
+		for update := range updatesChan {
+			if update.Message == nil { // ignore any non-Message Updates
+				log.Println("ignored null update")
+			} else {
+				chat := update.Message.Chat
+				mentionedMe, cmdMe := util.TalkOrCmdToMe(update)
+
+				// check if someone is talking to me:
+				if (chat.IsPrivate() || (chat.IsGroup() && mentionedMe)) && update.Message.Text != "/start" {
+					log.Printf("[%s] [chat:%d] %s\n", update.Message.From.UserName, chat.ID, update.Message.Text)
+					util.HandleCommand(update)
+				}
+
+				// check if someone started a new chat
+				if chat.IsPrivate() && cmdMe && update.Message.Text == "/start" {
+					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.UserName, chat.FirstName, chat.LastName)
+				}
+
+				// check if someone added me to a group
+				if update.Message.NewChatMembers != nil && len(*update.Message.NewChatMembers) > 0 {
+					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.Title, chat.FirstName, chat.LastName)
+				}
+
+				// check if someone removed me from a group
+				if update.Message.LeftChatMember != nil {
+					leftChatMember := *update.Message.LeftChatMember
+					if leftChatMember.UserName == util.Me.UserName {
+						log.Printf("chat removed, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.Title, chat.FirstName, chat.LastName)
+					}
+
+				}
+			}
+			fmt.Println("")
+		}
+	} else {
+		log.Printf("failed getting Bot updatesChannel, error: %v", err)
+		os.Exit(8)
 	}
 }
