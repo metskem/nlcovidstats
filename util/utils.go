@@ -24,6 +24,7 @@ import (
 var Me tgbotapi.User
 var Bot *tgbotapi.BotAPI
 
+// TODO als de input file er niet is, dan gewoon maken en niet falen
 func LoadInputFile(filename string) error {
 	var err error
 	// for now we read the (already downloaded) json file, later we will download it from https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json
@@ -123,7 +124,7 @@ func GetChartFile(city string) (*os.File, error) {
 	}
 	var filteredStats []model.Stat
 	for _, stat := range conf.Stats {
-		if stat.MunicipalityName == city {
+		if strings.ToLower(stat.MunicipalityName) == strings.ToLower(city) {
 			filteredStats = append(filteredStats, stat)
 		}
 	}
@@ -260,8 +261,8 @@ func HandleCommand(update tgbotapi.Update) {
 
 	if strings.HasPrefix(update.Message.Text, "/chart") {
 		words := strings.Split(update.Message.Text, " ")
-		if len(words) == 2 {
-			city := words[1]
+		if len(words) > 1 {
+			city := update.Message.Text[len("/chart")+1 : len(update.Message.Text)]
 			chartFile, err := GetChartFile(city)
 			if err != nil {
 				msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor gemeente %s, fout: %s", city, err)

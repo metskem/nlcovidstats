@@ -22,7 +22,7 @@ var (
 	RIVMDownloadURL      = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
 	HelpText             = "Deze Bot leest de (dagelijks actuele) data van RIVM, en genereert een grafiek voor de gemeente die u opgeeft\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/chart <Gemeentenaam> - Geeft grafiek van gemeentenaam, b.v. /chart Rijssen-Holten"
 	HashValueOfInputFile string
-	RefreshTime          = "15:25"
+	RefreshTime          = "14:25" // GMT
 )
 
 func EnvironmentComplete() {
