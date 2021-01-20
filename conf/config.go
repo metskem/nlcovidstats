@@ -12,17 +12,19 @@ var (
 	VersionTag string
 	BuildTime  string
 
-	Stats                []model.Stat
-	BotToken             = os.Getenv("BOT_TOKEN")
-	DebugStr             = os.Getenv("DEBUG")
-	Debug                bool
-	InputFile            = "input.json"
-	OutputFile           = "output.json"
-	MaxPlots             = 1000
+	Stats      []model.Stat
+	BotToken   = os.Getenv("BOT_TOKEN")
+	DebugStr   = os.Getenv("DEBUG")
+	Debug      bool
+	InputFile  = "input.json"
+	OutputFile = "output.json"
+	MaxPlots   = 1000
+	//RIVMDownloadURL      = "http://www.computerhok.nl/input.json"
 	RIVMDownloadURL      = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
 	HelpText             = "Deze Bot leest de (dagelijks actuele) data van RIVM, en genereert een grafiek voor de gemeente die u opgeeft\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/chart <Gemeentenaam> - Geeft grafiek van gemeentenaam, b.v. /chart Rijssen-Holten"
 	HashValueOfInputFile string
-	RefreshTime          = "14:25" // GMT
+	//RefreshTime          = "18:12" // GMT
+	RefreshTime = "14:25" // GMT
 )
 
 func EnvironmentComplete() {

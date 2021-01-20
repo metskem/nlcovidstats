@@ -2,8 +2,7 @@ package util
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,63 +25,71 @@ var Bot *tgbotapi.BotAPI
 
 // TODO als de input file er niet is, dan gewoon maken en niet falen
 func LoadInputFile(filename string) error {
-	var err error
-	// for now we read the (already downloaded) json file, later we will download it from https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json
-	RefreshInputFile(filename)
-	log.Printf("reading file %s", filename)
-	file, err := ioutil.ReadFile(filename)
+	changed, err := RefreshInputFile()
 	if err != nil {
-		log.Printf("failed reading input file %s: %s\n", filename, err)
-		return err
-	}
-
-	log.Printf("json-parsing file %s", filename)
-	var rawStats []model.RawStat
-	err = json.Unmarshal(file, &rawStats)
-	if err != nil {
-		log.Printf("failed unmarshalling json from file %s, error: %s\n", filename, err)
-		return err
-	}
-	log.Printf("we found %d elements", len(rawStats))
-
-	for _, rawStat := range rawStats {
-		stat := model.Stat{
-			DateOfPublication:      rawStat.DateOfPublication,
-			MunicipalityName:       rawStat.MunicipalityName,
-			Province:               rawStat.Province,
-			SecurityRegionName:     rawStat.SecurityRegionName,
-			MunicipalHealthService: rawStat.MunicipalHealthService,
-			TotalReported:          rawStat.TotalReported,
-			HospitalAdmission:      rawStat.HospitalAdmission,
-			Deceased:               rawStat.Deceased,
-		}
-		conf.Stats = append(conf.Stats, stat)
-	}
-	log.Print("json marshalling...")
-	ba, err := json.MarshalIndent(conf.Stats, "", " ")
-	if err != nil {
-		log.Printf("failed json marshalling, error: %s", err)
+		log.Printf("failed to refresh the file/url, error: %s", err)
 	} else {
-		log.Printf("writing to file %s", conf.OutputFile)
-		err = ioutil.WriteFile(conf.OutputFile, ba, os.ModePerm)
-		if err != nil {
-			log.Printf("failed to write output file %s, error: %s", conf.OutputFile, err)
-			return err
+		if changed {
+			log.Printf("reading file %s", filename)
+			file, err := ioutil.ReadFile(filename)
+			if err != nil {
+				log.Printf("failed reading input file %s: %s\n", filename, err)
+				return err
+			}
+
+			log.Printf("json-parsing file %s", filename)
+			var rawStats []model.RawStat
+			err = json.Unmarshal(file, &rawStats)
+			if err != nil {
+				log.Printf("failed unmarshalling json from file %s, error: %s\n", filename, err)
+				return err
+			}
+			log.Printf("we found %d elements", len(rawStats))
+
+			conf.Stats = nil
+			for _, rawStat := range rawStats {
+				stat := model.Stat{
+					DateOfPublication:      rawStat.DateOfPublication,
+					MunicipalityName:       rawStat.MunicipalityName,
+					Province:               rawStat.Province,
+					SecurityRegionName:     rawStat.SecurityRegionName,
+					MunicipalHealthService: rawStat.MunicipalHealthService,
+					TotalReported:          rawStat.TotalReported,
+					HospitalAdmission:      rawStat.HospitalAdmission,
+					Deceased:               rawStat.Deceased,
+				}
+				conf.Stats = append(conf.Stats, stat)
+			}
+			log.Print("json marshalling...")
+			ba, err := json.MarshalIndent(conf.Stats, "", " ")
+			if err != nil {
+				log.Printf("failed json marshalling, error: %s", err)
+			} else {
+				log.Printf("writing to file %s", conf.OutputFile)
+				err = ioutil.WriteFile(conf.OutputFile, ba, os.ModePerm)
+				if err != nil {
+					log.Printf("failed to write output file %s, error: %s", conf.OutputFile, err)
+					return err
+				}
+			}
+		} else {
+			log.Printf("input file did not change, not reloading...")
 		}
 	}
 	return err
 }
 
-func RefreshInputFile(filename string) {
+// Return true if the file (URL) has changed
+func RefreshInputFile() (bool, error) {
+	var err error
 	log.Printf("downloading new data from %s ...", conf.RIVMDownloadURL)
 	resp, err := http.Get(conf.RIVMDownloadURL)
 	if err != nil {
 		log.Printf("failed to download the RIVM data from %s, error: %s", conf.RIVMDownloadURL, err)
 	} else {
 		defer resp.Body.Close()
-
 		// Create the file
-		newFileName := fmt.Sprintf("%s.new", filename)
+		newFileName := fmt.Sprintf("%s.new", conf.InputFile)
 		newFile, err := os.Create(newFileName)
 		if err != nil {
 			log.Printf("failed to create file %s, error: %s", newFileName, err)
@@ -90,22 +97,23 @@ func RefreshInputFile(filename string) {
 			defer newFile.Close()
 			// Write the body to file
 			_, err = io.Copy(newFile, resp.Body)
-			newHash := sha1.New()
-			if _, err := io.Copy(newHash, newFile); err != nil {
-				log.Printf("failed to calculate hash over %s, error: %s", newFileName, err)
+			fileContents, err := ioutil.ReadFile(newFileName) // quite inefficient to read the whole file again, just to calculate the hash
+			if err != nil {
+				log.Printf("failed reading file, error: %s", err)
 			} else {
-				newHashValue := hex.EncodeToString(newHash.Sum(nil))
-				log.Printf("new hash value of input file %s : %s", newFileName, newHashValue)
+				newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
+				log.Printf("md5 sum of %s: %s", newFileName, newHashValue)
 				if newHashValue != conf.HashValueOfInputFile {
-					err := os.Remove(conf.InputFile)
+					err = os.Remove(conf.InputFile)
 					if err != nil {
 						log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
 					} else {
-						err := os.Rename(newFileName, conf.InputFile)
+						err = os.Rename(newFileName, conf.InputFile)
 						if err != nil {
 							log.Printf("failed to rename %s to %s, error: %s", newFileName, conf.InputFile, err)
 						} else {
 							conf.HashValueOfInputFile = newHashValue
+							return true, err
 						}
 					}
 				} else {
@@ -114,6 +122,7 @@ func RefreshInputFile(filename string) {
 			}
 		}
 	}
+	return false, err
 }
 
 func GetChartFile(city string) (*os.File, error) {
