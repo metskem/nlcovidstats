@@ -23,7 +23,6 @@ import (
 var Me tgbotapi.User
 var Bot *tgbotapi.BotAPI
 
-// TODO als de input file er niet is, dan gewoon maken en niet falen
 func LoadInputFile(filename string) error {
 	changed, err := RefreshInputFile()
 	if err != nil {
@@ -104,14 +103,18 @@ func RefreshInputFile() (bool, error) {
 				newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
 				log.Printf("md5 sum of %s: %s", newFileName, newHashValue)
 				if newHashValue != conf.HashValueOfInputFile {
-					err = os.Remove(conf.InputFile)
-					if err != nil {
-						log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
+					if _, err := os.Stat(conf.InputFile); os.IsExist(err) {
+						err = os.Remove(conf.InputFile)
+						if err != nil {
+							log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
+							return false, err
+						}
 					} else {
 						err = os.Rename(newFileName, conf.InputFile)
 						if err != nil {
 							log.Printf("failed to rename %s to %s, error: %s", newFileName, conf.InputFile, err)
 						} else {
+							log.Printf("renamed file %s to %s", newFileName, conf.InputFile)
 							conf.HashValueOfInputFile = newHashValue
 							return true, err
 						}
