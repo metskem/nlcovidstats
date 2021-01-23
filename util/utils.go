@@ -129,63 +129,66 @@ func RefreshInputFile() (bool, error) {
 }
 
 func GetChartFile(city string) (*os.File, error) {
-	xValues, cases, hospital, deceased, highestYAxisSec, highestYAxis, err := GetAxisValues(city)
-	//log.Printf("rendering %d plots for city %s ", len(xValues), city)
-	casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
-	hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
-	deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
-	var series []chart.Series
-	chart1 := chart.TimeSeries{Name: "Besmettingen", Style: casesStyle, XValues: xValues, YValues: cases}
-	chart2 := chart.TimeSeries{Name: "ZKH opnames", Style: hospitalStyle, XValues: xValues, YValues: hospital, YAxis: chart.YAxisSecondary}
-	chart3 := chart.TimeSeries{Name: "Overleden", Style: deceasedStyle, XValues: xValues, YValues: deceased, YAxis: chart.YAxisSecondary}
-	series = append(series, chart1, chart2, chart3)
+	var file *os.File
+	chartInput, err := GetChartInput(city)
+	if err == nil {
+		log.Printf("rendering %d plots for city %s ", len(chartInput.TimeStamps), city)
+		casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
+		hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
+		deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
+		var series []chart.Series
+		chart1 := chart.TimeSeries{Name: "Besmettingen", Style: casesStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Cases}
+		chart2 := chart.TimeSeries{Name: "ZKH opnames", Style: hospitalStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Hospital, YAxis: chart.YAxisSecondary}
+		chart3 := chart.TimeSeries{Name: "Overleden", Style: deceasedStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Deceased, YAxis: chart.YAxisSecondary}
+		series = append(series, chart1, chart2, chart3)
 
-	graph := chart.Chart{
-		Title: city,
-		XAxis: chart.XAxis{
-			ValueFormatter: chart.TimeValueFormatterWithFormat("2006-01-02"),
-		},
-		YAxisSecondary: chart.YAxis{
-			Name: "ZKH opnames / Overleden",
-			//Style: chart.Style{
-			//	TextRotationDegrees: 90,
-			//},
-			ValueFormatter: func(v interface{}) string {
-				if vf, isFloat := v.(float64); isFloat {
-					return fmt.Sprintf("%0.0f", vf)
-				}
-				return ""
+		graph := chart.Chart{
+			Title: city,
+			XAxis: chart.XAxis{
+				ValueFormatter: chart.TimeValueFormatterWithFormat("2006-01-02"),
 			},
-			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYAxisSec)},
-		},
-		YAxis: chart.YAxis{
-			Name: "Besmettingen",
-			ValueFormatter: func(v interface{}) string {
-				if vf, isFloat := v.(float64); isFloat {
-					return fmt.Sprintf("%0.0f", vf)
-				}
-				return ""
+			YAxisSecondary: chart.YAxis{
+				Name: "ZKH opnames / Overleden",
+				//Style: chart.Style{
+				//	TextRotationDegrees: 90,
+				//},
+				ValueFormatter: func(v interface{}) string {
+					if vf, isFloat := v.(float64); isFloat {
+						return fmt.Sprintf("%0.0f", vf)
+					}
+					return ""
+				},
+				Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxisSec)},
 			},
-			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYAxis)},
-		},
-		Background: chart.Style{Padding: chart.Box{Left: 125, Right: 25}},
-		Series:     series,
-	}
+			YAxis: chart.YAxis{
+				Name: "Besmettingen",
+				ValueFormatter: func(v interface{}) string {
+					if vf, isFloat := v.(float64); isFloat {
+						return fmt.Sprintf("%0.0f", vf)
+					}
+					return ""
+				},
+				Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxis)},
+			},
+			Background: chart.Style{Padding: chart.Box{Left: 125, Right: 25}},
+			Series:     series,
+		}
 
-	graph.Elements = []chart.Renderable{chart.LegendLeft(&graph)}
+		graph.Elements = []chart.Renderable{chart.LegendLeft(&graph)}
 
-	file, _ := os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
-	defer file.Close()
-	err = graph.Render(chart.PNG, file)
-	if err != nil {
-		msg := fmt.Sprintf("failed to render graph, error: %s", err)
-		log.Print(msg)
+		file, _ = os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
+		defer file.Close()
+		err = graph.Render(chart.PNG, file)
+		if err != nil {
+			msg := fmt.Sprintf("failed to render graph, error: %s", err)
+			log.Print(msg)
+		}
 	}
 	return file, err
 }
 
 // Returns the XAxis, and YAxis values (besmettingen, hospital, deceased) and the highest values for left and right YAxis
-func GetAxisValues(city string) ([]time.Time, []float64, []float64, []float64, int, int, error) {
+func GetChartInput(city string) (model.ChartInput, error) {
 	var err error
 	var cases []float64
 	var deceased []float64
@@ -193,7 +196,7 @@ func GetAxisValues(city string) ([]time.Time, []float64, []float64, []float64, i
 	var xValues []time.Time
 	var highestYaxis, highestYaxisSec int
 	if city == "" {
-		return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, errors.New("geen gemeente opgegeven")
+		return model.ChartInput{}, errors.New("geen gemeente opgegeven")
 	}
 	var filteredStats []model.Stat
 	for _, stat := range conf.Stats {
@@ -202,7 +205,7 @@ func GetAxisValues(city string) ([]time.Time, []float64, []float64, []float64, i
 		}
 	}
 	if len(filteredStats) == 0 {
-		return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
+		return model.ChartInput{}, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
 	}
 	//log.Printf("found %d observations for city %s", len(filteredStats), city)
 
@@ -223,7 +226,15 @@ func GetAxisValues(city string) ([]time.Time, []float64, []float64, []float64, i
 		xValues = append(xValues, stat.DateOfPublication.Time())
 	}
 
-	return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, err
+	chartInput := model.ChartInput{
+		TimeStamps:      xValues,
+		Cases:           cases,
+		Hospital:        hospital,
+		Deceased:        deceased,
+		HighestYAxisSec: highestYaxisSec,
+		HighestYAxis:    highestYaxis,
+	}
+	return chartInput, err
 }
 
 // Returns if we are mentioned and if we were commanded
