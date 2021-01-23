@@ -129,64 +129,11 @@ func RefreshInputFile() (bool, error) {
 }
 
 func GetChartFile(city string) (*os.File, error) {
-	var err error
-	var file *os.File
-	if city == "" {
-		return nil, errors.New("Geen gemeente opgegeven")
-	}
-	var filteredStats []model.Stat
-	for _, stat := range conf.Stats {
-		if strings.ToLower(stat.MunicipalityName) == strings.ToLower(city) {
-			filteredStats = append(filteredStats, stat)
-		}
-	}
-	if len(filteredStats) == 0 {
-		return file, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
-	}
-	//log.Printf("found %d observations for city %s", len(filteredStats), city)
-
-	var cumulative = false
-	var cases []float64
-	var deceased []float64
-	var hospital []float64
-	var xValues []time.Time
-	var highestYaxis, highestYaxisSec, cumulCases, cumulHospital, cumulDeceased int
-	var casesStyle, hospitalStyle, deceasedStyle chart.Style
-	for ix, stat := range filteredStats {
-		if ix > conf.MaxPlots {
-			break
-		}
-		if cumulative {
-			cumulCases = cumulCases + stat.TotalReported
-			cumulHospital = cumulHospital + stat.HospitalAdmission
-			cumulDeceased = cumulDeceased + stat.Deceased
-			cases = append(cases, float64(cumulCases))
-			hospital = append(hospital, float64(cumulHospital))
-			deceased = append(deceased, float64(cumulDeceased))
-		} else {
-			cases = append(cases, float64(stat.TotalReported))
-			hospital = append(hospital, float64(stat.HospitalAdmission))
-			deceased = append(deceased, float64(stat.Deceased))
-			if stat.TotalReported > highestYaxis {
-				highestYaxis = stat.TotalReported
-			}
-			if stat.Deceased > highestYaxisSec {
-				highestYaxisSec = stat.Deceased
-			}
-		}
-		//log.Printf("%v: %d %d %d", stat.DateOfPublication.Time(), stat.TotalReported, stat.HospitalAdmission, stat.Deceased)
-		xValues = append(xValues, stat.DateOfPublication.Time())
-	}
-
-	if cumulative {
-		highestYaxis = cumulCases
-		highestYaxisSec = cumulDeceased
-	} else {
-		casesStyle = chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
-		hospitalStyle = chart.Style{FillColor: drawing.ColorFromHex("63c522")}
-		deceasedStyle = chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
-	}
+	xValues, cases, hospital, deceased, highestYAxisSec, highestYAxis, err := GetAxisValues(city)
 	//log.Printf("rendering %d plots for city %s ", len(xValues), city)
+	casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
+	hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
+	deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
 	var series []chart.Series
 	chart1 := chart.TimeSeries{Name: "Besmettingen", Style: casesStyle, XValues: xValues, YValues: cases}
 	chart2 := chart.TimeSeries{Name: "ZKH opnames", Style: hospitalStyle, XValues: xValues, YValues: hospital, YAxis: chart.YAxisSecondary}
@@ -209,7 +156,7 @@ func GetChartFile(city string) (*os.File, error) {
 				}
 				return ""
 			},
-			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYaxisSec)},
+			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYAxisSec)},
 		},
 		YAxis: chart.YAxis{
 			Name: "Besmettingen",
@@ -219,7 +166,7 @@ func GetChartFile(city string) (*os.File, error) {
 				}
 				return ""
 			},
-			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYaxis)},
+			Range: &chart.ContinuousRange{Min: 0, Max: float64(highestYAxis)},
 		},
 		Background: chart.Style{Padding: chart.Box{Left: 125, Right: 25}},
 		Series:     series,
@@ -227,7 +174,7 @@ func GetChartFile(city string) (*os.File, error) {
 
 	graph.Elements = []chart.Renderable{chart.LegendLeft(&graph)}
 
-	file, _ = os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
+	file, _ := os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
 	defer file.Close()
 	err = graph.Render(chart.PNG, file)
 	if err != nil {
@@ -235,6 +182,48 @@ func GetChartFile(city string) (*os.File, error) {
 		log.Print(msg)
 	}
 	return file, err
+}
+
+// Returns the XAxis, and YAxis values (besmettingen, hospital, deceased) and the highest values for left and right YAxis
+func GetAxisValues(city string) ([]time.Time, []float64, []float64, []float64, int, int, error) {
+	var err error
+	var cases []float64
+	var deceased []float64
+	var hospital []float64
+	var xValues []time.Time
+	var highestYaxis, highestYaxisSec int
+	if city == "" {
+		return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, errors.New("geen gemeente opgegeven")
+	}
+	var filteredStats []model.Stat
+	for _, stat := range conf.Stats {
+		if strings.ToLower(stat.MunicipalityName) == strings.ToLower(city) {
+			filteredStats = append(filteredStats, stat)
+		}
+	}
+	if len(filteredStats) == 0 {
+		return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
+	}
+	//log.Printf("found %d observations for city %s", len(filteredStats), city)
+
+	for ix, stat := range filteredStats {
+		if ix > conf.MaxPlots {
+			break
+		}
+		cases = append(cases, float64(stat.TotalReported))
+		hospital = append(hospital, float64(stat.HospitalAdmission))
+		deceased = append(deceased, float64(stat.Deceased))
+		if stat.TotalReported > highestYaxis {
+			highestYaxis = stat.TotalReported
+		}
+		if stat.Deceased > highestYaxisSec {
+			highestYaxisSec = stat.Deceased
+		}
+		//log.Printf("%v: %d %d %d", stat.DateOfPublication.Time(), stat.TotalReported, stat.HospitalAdmission, stat.Deceased)
+		xValues = append(xValues, stat.DateOfPublication.Time())
+	}
+
+	return xValues, cases, hospital, deceased, highestYaxisSec, highestYaxis, err
 }
 
 // Returns if we are mentioned and if we were commanded
@@ -271,10 +260,10 @@ func HandleCommand(update tgbotapi.Update) {
 		return
 	}
 
-	if strings.HasPrefix(update.Message.Text, "/chart") {
+	if strings.HasPrefix(update.Message.Text, "/gemeente") {
 		words := strings.Split(update.Message.Text, " ")
 		if len(words) > 1 {
-			city := update.Message.Text[len("/chart")+1 : len(update.Message.Text)]
+			city := update.Message.Text[len("/gemeente")+1 : len(update.Message.Text)]
 			chartFile, err := GetChartFile(city)
 			if err != nil {
 				msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor gemeente %s, fout: %s", city, err)
@@ -285,7 +274,20 @@ func HandleCommand(update tgbotapi.Update) {
 				_, err = Bot.Send(photoConfig)
 			}
 		} else {
-			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "geeft een gemeente naam op, b.v.:  /chart Rotterdam"))
+			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "geeft een gemeente naam op, b.v.:  /gemeente Rotterdam"))
+		}
+		return
+	}
+
+	if strings.HasPrefix(update.Message.Text, "/land") {
+		chartFile, err := GetChartFile("")
+		if err != nil {
+			msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor land, fout: %s", err)
+			log.Printf(msg)
+			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
+		} else {
+			photoConfig := tgbotapi.NewDocumentUpload(update.Message.Chat.ID, chartFile.Name())
+			_, err = Bot.Send(photoConfig)
 		}
 		return
 	}
