@@ -10,12 +10,12 @@ import (
 	"github.com/metskem/nlcovidstats/conf"
 	"github.com/metskem/nlcovidstats/model"
 	"github.com/wcharczuk/go-chart"
-	"github.com/wcharczuk/go-chart/drawing"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -128,63 +128,116 @@ func RefreshInputFile() (bool, error) {
 	return false, err
 }
 
-func GetChartFile(city string) (*os.File, error) {
+func GetChartFile(chartInput model.ChartInput) (*os.File, error) {
+	var err error
 	var file *os.File
-	chartInput, err := GetChartInput(city)
-	if err == nil {
-		log.Printf("rendering %d plots for city %s ", len(chartInput.TimeStamps), city)
-		casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
-		hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
-		deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
-		var series []chart.Series
-		chart1 := chart.TimeSeries{Name: "Besmettingen", Style: casesStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Cases}
-		chart2 := chart.TimeSeries{Name: "ZKH opnames", Style: hospitalStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Hospital, YAxis: chart.YAxisSecondary}
-		chart3 := chart.TimeSeries{Name: "Overleden", Style: deceasedStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Deceased, YAxis: chart.YAxisSecondary}
-		series = append(series, chart1, chart2, chart3)
+	//casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
+	//hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
+	//deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
+	casesStyle := chart.Style{}
+	hospitalStyle := chart.Style{}
+	deceasedStyle := chart.Style{}
 
-		graph := chart.Chart{
-			Title: city,
-			XAxis: chart.XAxis{
-				ValueFormatter: chart.TimeValueFormatterWithFormat("2006-01-02"),
-			},
-			YAxisSecondary: chart.YAxis{
-				Name: "ZKH opnames / Overleden",
-				//Style: chart.Style{
-				//	TextRotationDegrees: 90,
-				//},
-				ValueFormatter: func(v interface{}) string {
-					if vf, isFloat := v.(float64); isFloat {
-						return fmt.Sprintf("%0.0f", vf)
-					}
-					return ""
-				},
-				Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxisSec)},
-			},
-			YAxis: chart.YAxis{
-				Name: "Besmettingen",
-				ValueFormatter: func(v interface{}) string {
-					if vf, isFloat := v.(float64); isFloat {
-						return fmt.Sprintf("%0.0f", vf)
-					}
-					return ""
-				},
-				Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxis)},
-			},
-			Background: chart.Style{Padding: chart.Box{Left: 125, Right: 25}},
-			Series:     series,
-		}
+	var series []chart.Series
+	series1 := chart.TimeSeries{Name: "Besmettingen", Style: casesStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Cases}
+	series2 := chart.TimeSeries{Name: "ZKH opnames", Style: hospitalStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Hospital, YAxis: chart.YAxisSecondary}
+	series3 := chart.TimeSeries{Name: "Overleden", Style: deceasedStyle, XValues: chartInput.TimeStamps, YValues: chartInput.Deceased, YAxis: chart.YAxisSecondary}
+	series = append(series, series1, series2, series3)
 
-		graph.Elements = []chart.Renderable{chart.LegendLeft(&graph)}
+	graph := chart.Chart{
+		Title: chartInput.Title,
+		XAxis: chart.XAxis{
+			ValueFormatter: chart.TimeValueFormatterWithFormat("2006-01-02"),
+		},
+		YAxisSecondary: chart.YAxis{
+			Name: "ZKH opnames / Overleden",
+			//Style: chart.Style{
+			//	TextRotationDegrees: 90,
+			//},
+			ValueFormatter: func(v interface{}) string {
+				if vf, isFloat := v.(float64); isFloat {
+					return fmt.Sprintf("%0.0f", vf)
+				}
+				return ""
+			},
+			Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxisSec)},
+		},
+		YAxis: chart.YAxis{
+			Name: "Besmettingen",
+			ValueFormatter: func(v interface{}) string {
+				if vf, isFloat := v.(float64); isFloat {
+					return fmt.Sprintf("%0.0f", vf)
+				}
+				return ""
+			},
+			Range: &chart.ContinuousRange{Min: 0, Max: float64(chartInput.HighestYAxis)},
+		},
+		Background: chart.Style{Padding: chart.Box{Left: 125, Right: 25}},
+		Series:     series,
+	}
 
-		file, _ = os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
-		defer file.Close()
-		err = graph.Render(chart.PNG, file)
-		if err != nil {
-			msg := fmt.Sprintf("failed to render graph, error: %s", err)
-			log.Print(msg)
-		}
+	graph.Elements = []chart.Renderable{chart.LegendLeft(&graph)}
+
+	file, _ = os.Create(fmt.Sprintf("%s/result.png", os.TempDir()))
+	defer file.Close()
+	err = graph.Render(chart.PNG, file)
+	if err != nil {
+		msg := fmt.Sprintf("failed to render graph, error: %s", err)
+		log.Print(msg)
 	}
 	return file, err
+}
+
+func GetChartInputCountry() (model.ChartInput, error) {
+	var err error
+	var totalStats int
+	var casesByDate = make(map[int64]int)
+	var hospitalByDate = make(map[int64]int)
+	var deceasedByDate = make(map[int64]int)
+	for ix, stat := range conf.Stats {
+		casesByDate[stat.DateOfPublication.Time().Unix()] = casesByDate[stat.DateOfPublication.Time().Unix()] + stat.TotalReported
+		hospitalByDate[stat.DateOfPublication.Time().Unix()] = hospitalByDate[stat.DateOfPublication.Time().Unix()] + stat.HospitalAdmission
+		deceasedByDate[stat.DateOfPublication.Time().Unix()] = deceasedByDate[stat.DateOfPublication.Time().Unix()] + stat.Deceased
+		totalStats = ix
+	}
+	log.Printf("processed %d stats voor whole country", totalStats)
+	// do the sorting
+	keys := make([]int, 0, len(casesByDate))
+	for k := range casesByDate {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	var cases []float64
+	var deceased []float64
+	var hospital []float64
+	var xValues []time.Time
+	var highestYaxis, highestYaxisSec int
+	for _, key := range keys {
+		key64 := int64(key)
+		xValues = append(xValues, time.Unix(key64, 0))
+		cases = append(cases, float64(casesByDate[key64]))
+		hospital = append(hospital, float64(hospitalByDate[key64]))
+		deceased = append(deceased, float64(deceasedByDate[key64]))
+		if casesByDate[int64(key)] > highestYaxis {
+			highestYaxis = casesByDate[key64]
+		}
+		if hospitalByDate[int64(key)] > highestYaxisSec {
+			highestYaxisSec = hospitalByDate[key64]
+		}
+		if deceasedByDate[int64(key)] > highestYaxisSec {
+			highestYaxisSec = deceasedByDate[key64]
+		}
+	}
+
+	return model.ChartInput{
+		Title:           "NL",
+		TimeStamps:      xValues,
+		Cases:           cases,
+		Hospital:        hospital,
+		Deceased:        deceased,
+		HighestYAxisSec: highestYaxisSec,
+		HighestYAxis:    highestYaxis,
+	}, err
 }
 
 // Returns the XAxis, and YAxis values (besmettingen, hospital, deceased) and the highest values for left and right YAxis
@@ -275,14 +328,21 @@ func HandleCommand(update tgbotapi.Update) {
 		words := strings.Split(update.Message.Text, " ")
 		if len(words) > 1 {
 			city := update.Message.Text[len("/gemeente")+1 : len(update.Message.Text)]
-			chartFile, err := GetChartFile(city)
+			chartInput, err := GetChartInput(city)
 			if err != nil {
-				msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor gemeente %s, fout: %s", city, err)
+				msg := fmt.Sprintf("Fout bij het genereren van de grafiek data voor gemeente %s, fout: %s", city, err)
 				log.Printf(msg)
 				_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
 			} else {
-				photoConfig := tgbotapi.NewDocumentUpload(update.Message.Chat.ID, chartFile.Name())
-				_, err = Bot.Send(photoConfig)
+				chartFile, err := GetChartFile(chartInput)
+				if err != nil {
+					msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor gemeente %s, fout: %s", city, err)
+					log.Printf(msg)
+					_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
+				} else {
+					photoConfig := tgbotapi.NewDocumentUpload(update.Message.Chat.ID, chartFile.Name())
+					_, err = Bot.Send(photoConfig)
+				}
 			}
 		} else {
 			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "geeft een gemeente naam op, b.v.:  /gemeente Rotterdam"))
@@ -291,16 +351,23 @@ func HandleCommand(update tgbotapi.Update) {
 	}
 
 	if strings.HasPrefix(update.Message.Text, "/land") {
-		chartFile, err := GetChartFile("")
-		if err != nil {
-			msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor land, fout: %s", err)
+		chartInput, err := GetChartInputCountry()
+		if err == nil {
+			chartFile, err := GetChartFile(chartInput)
+			if err != nil {
+				msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor land, fout: %s", err)
+				log.Printf(msg)
+				_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
+			} else {
+				photoConfig := tgbotapi.NewDocumentUpload(update.Message.Chat.ID, chartFile.Name())
+				_, err = Bot.Send(photoConfig)
+			}
+			return
+		} else {
+			msg := fmt.Sprintf("Fout bij het genereren van de grafiek date voor land, fout: %s", err)
 			log.Printf(msg)
 			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
-		} else {
-			photoConfig := tgbotapi.NewDocumentUpload(update.Message.Chat.ID, chartFile.Name())
-			_, err = Bot.Send(photoConfig)
 		}
-		return
 	}
 
 	_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Dit heb ik niet begrepen.\n%s", conf.HelpText)))

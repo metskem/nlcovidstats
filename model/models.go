@@ -55,6 +55,7 @@ func (j JsonDateOfPublication) Time() time.Time {
 }
 
 type ChartInput struct {
+	Title           string
 	TimeStamps      []time.Time
 	Cases           []float64
 	Hospital        []float64
