@@ -1,7 +1,7 @@
 package conf
 
 import (
-	"github.com/metskem/nlCOVIDstats/model"
+	"github.com/metskem/nlcovidstats/model"
 	"log"
 	"os"
 )
