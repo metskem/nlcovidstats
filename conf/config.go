@@ -20,7 +20,7 @@ var (
 	OutputFile = "output.json"
 	MaxPlots   = 1000
 	//RIVMDownloadURL      = "http://www.computerhok.nl/input.json"
-	RIVMDownloadURL      = "https://data.rivm.nl/COVID-19/COVID-19_aantallen_gemeente_per_dag.json"
+	RIVMDownloadURL      = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
 	HelpText             = "Deze Bot leest de (dagelijks actuele) data van RIVM, en genereert een grafiek voor de gemeente die u opgeeft\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/land - Geeft COVID-19 grafiek van heel NL\n/gemeente <Gemeentenaam> - Geeft COVID-19 grafiek van gemeentenaam, b.v. /gemeente Rijssen-Holten"
 	HashValueOfInputFile string
 	//RefreshTime          = "18:12" // GMT

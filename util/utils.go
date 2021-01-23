@@ -82,45 +82,58 @@ func LoadInputFile(filename string) error {
 func RefreshInputFile() (bool, error) {
 	var err error
 	log.Printf("downloading new data from %s ...", conf.RIVMDownloadURL)
-	resp, err := http.Get(conf.RIVMDownloadURL)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}}
+	resp, err := client.Get(conf.RIVMDownloadURL)
 	if err != nil {
 		log.Printf("failed to download the RIVM data from %s, error: %s", conf.RIVMDownloadURL, err)
 	} else {
-		defer resp.Body.Close()
-		// Create the file
-		newFileName := fmt.Sprintf("%s.new", conf.InputFile)
-		newFile, err := os.Create(newFileName)
-		if err != nil {
-			log.Printf("failed to create file %s, error: %s", newFileName, err)
-		} else {
-			defer newFile.Close()
-			// Write the body to file
-			_, err = io.Copy(newFile, resp.Body)
-			fileContents, err := ioutil.ReadFile(newFileName) // quite inefficient to read the whole file again, just to calculate the hash
-			if err != nil {
-				log.Printf("failed reading file, error: %s", err)
+		if resp.StatusCode != http.StatusOK {
+			if resp != nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				log.Printf("failed to download the RIVM data from %s, statuscode: %s, response: %s", conf.RIVMDownloadURL, resp.Status, body)
 			} else {
-				newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
-				log.Printf("md5 sum of %s: %s", newFileName, newHashValue)
-				if newHashValue != conf.HashValueOfInputFile {
-					if _, err := os.Stat(conf.InputFile); os.IsExist(err) {
-						err = os.Remove(conf.InputFile)
-						if err != nil {
-							log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
-							return false, err
+				log.Printf("failed to download the RIVM data from %s, statuscode: %s", conf.RIVMDownloadURL, resp.Status)
+			}
+		} else {
+			defer resp.Body.Close()
+			// Create the file
+			newFileName := fmt.Sprintf("%s.new", conf.InputFile)
+			newFile, err := os.Create(newFileName)
+			if err != nil {
+				log.Printf("failed to create file %s, error: %s", newFileName, err)
+			} else {
+				defer newFile.Close()
+				// Write the body to file
+				_, err = io.Copy(newFile, resp.Body)
+				fileContents, err := ioutil.ReadFile(newFileName) // quite inefficient to read the whole file again, just to calculate the hash
+				if err != nil {
+					log.Printf("failed reading file, error: %s", err)
+				} else {
+					newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
+					log.Printf("md5 sum of %s: %s", newFileName, newHashValue)
+					if newHashValue != conf.HashValueOfInputFile {
+						if _, err := os.Stat(conf.InputFile); os.IsExist(err) {
+							err = os.Remove(conf.InputFile)
+							if err != nil {
+								log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
+								return false, err
+							}
+						} else {
+							err = os.Rename(newFileName, conf.InputFile)
+							if err != nil {
+								log.Printf("failed to rename %s to %s, error: %s", newFileName, conf.InputFile, err)
+							} else {
+								log.Printf("renamed file %s to %s", newFileName, conf.InputFile)
+								conf.HashValueOfInputFile = newHashValue
+								return true, err
+							}
 						}
 					} else {
-						err = os.Rename(newFileName, conf.InputFile)
-						if err != nil {
-							log.Printf("failed to rename %s to %s, error: %s", newFileName, conf.InputFile, err)
-						} else {
-							log.Printf("renamed file %s to %s", newFileName, conf.InputFile)
-							conf.HashValueOfInputFile = newHashValue
-							return true, err
-						}
+						log.Printf("hash value (%s) of %s is same as hash value of %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, conf.InputFile)
 					}
-				} else {
-					log.Printf("hash value (%s) of %s is same as hash value of %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, conf.InputFile)
 				}
 			}
 		}
