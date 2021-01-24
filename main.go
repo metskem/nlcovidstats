@@ -28,7 +28,7 @@ func main() {
 	meDetails := "unknown"
 	if err == nil {
 		meDetails = fmt.Sprintf("BOT: ID:%d UserName:%s FirstName:%s LastName:%s", util.Me.ID, util.Me.UserName, util.Me.FirstName, util.Me.LastName)
-		log.Printf("\nStarted Bot: %s, version:%s, build time:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
+		log.Printf("Started Bot: %s, version:%s, build time:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
 	} else {
 		log.Printf("Bot.GetMe() failed: %v", err)
 	}
