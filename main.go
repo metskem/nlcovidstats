@@ -28,7 +28,7 @@ func main() {
 	meDetails := "unknown"
 	if err == nil {
 		meDetails = fmt.Sprintf("BOT: ID:%d UserName:%s FirstName:%s LastName:%s", util.Me.ID, util.Me.UserName, util.Me.FirstName, util.Me.LastName)
-		log.Printf("Started Bot: %s, version:%s, build time:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
+		log.Printf("\nStarted Bot: %s, version:%s, build time:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
 	} else {
 		log.Printf("Bot.GetMe() failed: %v", err)
 	}
@@ -73,13 +73,13 @@ func main() {
 
 				// check if someone is talking to me:
 				if (chat.IsPrivate() || (chat.IsGroup() && mentionedMe)) && update.Message.Text != "/start" {
-					log.Printf("[%s] [chat:%d] %s\n", update.Message.From.UserName, chat.ID, update.Message.Text)
+					log.Printf("[%s] [chat:%d] %s", update.Message.From.UserName, chat.ID, update.Message.Text)
 					util.HandleCommand(update)
 				}
 
 				// check if someone started a new chat
 				if chat.IsPrivate() && cmdMe && update.Message.Text == "/start" {
-					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.UserName, chat.FirstName, chat.LastName)
+					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)", chat.ID, chat.UserName, chat.FirstName, chat.LastName)
 				}
 
 				// check if someone added me to a group
