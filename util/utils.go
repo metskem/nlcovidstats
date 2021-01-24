@@ -35,7 +35,6 @@ func LoadInputFile(filename string) error {
 				log.Printf("failed reading input file %s: %s\n", filename, err)
 				return err
 			}
-
 			log.Printf("json-parsing file %s", filename)
 			var rawStats []model.RawStat
 			err = json.Unmarshal(file, &rawStats)
@@ -48,17 +47,16 @@ func LoadInputFile(filename string) error {
 			conf.Stats = nil
 			for _, rawStat := range rawStats {
 				stat := model.Stat{
-					DateOfPublication:      rawStat.DateOfPublication,
-					MunicipalityName:       rawStat.MunicipalityName,
-					Province:               rawStat.Province,
-					SecurityRegionName:     rawStat.SecurityRegionName,
-					MunicipalHealthService: rawStat.MunicipalHealthService,
-					TotalReported:          rawStat.TotalReported,
-					HospitalAdmission:      rawStat.HospitalAdmission,
-					Deceased:               rawStat.Deceased,
+					DateOfPublication: rawStat.DateOfPublication,
+					MunicipalityName:  rawStat.MunicipalityName,
+					Province:          rawStat.Province,
+					TotalReported:     rawStat.TotalReported,
+					HospitalAdmission: rawStat.HospitalAdmission,
+					Deceased:          rawStat.Deceased,
 				}
 				conf.Stats = append(conf.Stats, stat)
 			}
+			rawStats = nil
 			log.Print("json marshalling...")
 			ba, err := json.MarshalIndent(conf.Stats, "", " ")
 			if err != nil {

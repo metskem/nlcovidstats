@@ -24,14 +24,12 @@ type RawStat struct {
 
 type Stats []struct{ Stat }
 type Stat struct {
-	DateOfPublication      JsonDateOfPublication `json:"Date_of_publication"`
-	MunicipalityName       string                `json:"Municipality_name"`
-	Province               string                `json:"Province"`
-	SecurityRegionName     string                `json:"Security_region_name"`
-	MunicipalHealthService string                `json:"Municipal_health_service"`
-	TotalReported          int                   `json:"Total_reported"`
-	HospitalAdmission      int                   `json:"Hospital_admission"`
-	Deceased               int                   `json:"Deceased"`
+	DateOfPublication JsonDateOfPublication `json:"Date_of_publication"`
+	MunicipalityName  string                `json:"Municipality_name"`
+	Province          string                `json:"Province"`
+	TotalReported     int                   `json:"Total_reported"`
+	HospitalAdmission int                   `json:"Hospital_admission"`
+	Deceased          int                   `json:"Deceased"`
 }
 
 type JsonDateOfPublication time.Time
