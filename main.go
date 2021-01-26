@@ -69,12 +69,12 @@ func main() {
 				log.Println("ignored null update")
 			} else {
 				chat := update.Message.Chat
-				mentionedMe, cmdMe := util.TalkOrCmdToMe(update)
+				mentionedMe, cmdMe := util.TalkOrCmdToMe(&update)
 
 				// check if someone is talking to me:
 				if (chat.IsPrivate() || (chat.IsGroup() && mentionedMe)) && update.Message.Text != "/start" {
 					log.Printf("[%s] [chat:%d] %s", update.Message.From.UserName, chat.ID, update.Message.Text)
-					util.HandleCommand(update)
+					util.HandleCommand(&update)
 				}
 
 				// check if someone started a new chat

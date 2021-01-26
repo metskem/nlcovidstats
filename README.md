@@ -7,6 +7,7 @@ Een Telegram Bot dat gegevens leest van [RIVM data](https://data.rivm.nl/covid-1
 De volgende Bot commando's worden ondersteund (gebruik dit om BotFather er mee te configureren):
 ```
 help - Geef uitleg van deze Bot
+laatsteweek - geeft de landelijke cijfers van de afgelopen 7 dagen 
 land - Grafiek met COVID stats voor het hele land
 gemeente -  <Gemeente Naam> -  Grafiek met COVID stats voor <Gemeente Naam>, voorbeeld: /gemeente Rotterdam
 ```

@@ -139,7 +139,7 @@ func RefreshInputFile() (bool, error) {
 	return false, err
 }
 
-func GetChartFile(chartInput model.ChartInput) (*os.File, error) {
+func GetChartFile(chartInput *model.ChartInput) (*os.File, error) {
 	var err error
 	var file *os.File
 	//casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
@@ -199,7 +199,7 @@ func GetChartFile(chartInput model.ChartInput) (*os.File, error) {
 	return file, err
 }
 
-func GetChartInputCountry() (model.ChartInput, error) {
+func GetChartInputCountry() (*model.ChartInput, error) {
 	var err error
 	var totalStats int
 	var casesByDate = make(map[int64]int)
@@ -240,7 +240,7 @@ func GetChartInputCountry() (model.ChartInput, error) {
 		}
 	}
 
-	return model.ChartInput{
+	return &model.ChartInput{
 		Title:           "NL",
 		TimeStamps:      xValues,
 		Cases:           cases,
@@ -252,7 +252,7 @@ func GetChartInputCountry() (model.ChartInput, error) {
 }
 
 // Returns the XAxis, and YAxis values (besmettingen, hospital, deceased) and the highest values for left and right YAxis
-func GetChartInput(city string) (model.ChartInput, error) {
+func GetChartInput(city string) (*model.ChartInput, error) {
 	var err error
 	var cases []float64
 	var deceased []float64
@@ -260,7 +260,7 @@ func GetChartInput(city string) (model.ChartInput, error) {
 	var xValues []time.Time
 	var highestYaxis, highestYaxisSec int
 	if city == "" {
-		return model.ChartInput{}, errors.New("geen gemeente opgegeven")
+		return &model.ChartInput{}, errors.New("geen gemeente opgegeven")
 	}
 	var filteredStats []model.Stat
 	for _, stat := range conf.Stats {
@@ -269,7 +269,7 @@ func GetChartInput(city string) (model.ChartInput, error) {
 		}
 	}
 	if len(filteredStats) == 0 {
-		return model.ChartInput{}, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
+		return &model.ChartInput{}, errors.New(fmt.Sprintf("Gemeente %s niet gevonden", city))
 	}
 	//log.Printf("found %d observations for city %s", len(filteredStats), city)
 
@@ -298,11 +298,11 @@ func GetChartInput(city string) (model.ChartInput, error) {
 		HighestYAxisSec: highestYaxisSec,
 		HighestYAxis:    highestYaxis,
 	}
-	return chartInput, err
+	return &chartInput, err
 }
 
 // Returns if we are mentioned and if we were commanded
-func TalkOrCmdToMe(update tgbotapi.Update) (bool, bool) {
+func TalkOrCmdToMe(update *tgbotapi.Update) (bool, bool) {
 	entities := update.Message.Entities
 	var mentioned = false
 	var botCmd = false
@@ -328,7 +328,7 @@ func TalkOrCmdToMe(update tgbotapi.Update) (bool, bool) {
 	return mentioned, botCmd
 }
 
-func HandleCommand(update tgbotapi.Update) {
+func HandleCommand(update *tgbotapi.Update) {
 	if strings.HasPrefix(update.Message.Text, "/help") {
 		log.Printf("help text requested by %s", update.Message.From)
 		_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, conf.HelpText))
@@ -379,6 +379,34 @@ func HandleCommand(update tgbotapi.Update) {
 			log.Printf(msg)
 			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
 		}
+		return
+	}
+
+	if strings.HasPrefix(update.Message.Text, "/laatsteweek") {
+		var casesByDate = make(map[int64]int)
+		var hospitalByDate = make(map[int64]int)
+		var deceasedByDate = make(map[int64]int)
+		sevenDaysAgo := time.Now().Add(time.Hour * -24 * 7)
+		for _, stat := range conf.Stats {
+			if stat.DateOfPublication.Time().After(sevenDaysAgo) {
+				casesByDate[stat.DateOfPublication.Time().Unix()] = casesByDate[stat.DateOfPublication.Time().Unix()] + stat.TotalReported
+				hospitalByDate[stat.DateOfPublication.Time().Unix()] = hospitalByDate[stat.DateOfPublication.Time().Unix()] + stat.HospitalAdmission
+				deceasedByDate[stat.DateOfPublication.Time().Unix()] = deceasedByDate[stat.DateOfPublication.Time().Unix()] + stat.Deceased
+			}
+		}
+		// do the sorting
+		keys := make([]int, 0, len(casesByDate))
+		for k := range casesByDate {
+			keys = append(keys, int(k))
+		}
+		sort.Ints(keys)
+		msg := fmt.Sprintf("  %25s        %15s    %15s %15s\n", "datum", "besmettingen", "zkh opnames", "overleden")
+		for _, key := range keys {
+			key64 := int64(key)
+			msg = fmt.Sprintf("%s%s", msg, fmt.Sprintf("%12s  %15d  %25d  %15d\n", time.Unix(key64, 0).Format(conf.DateFormat), casesByDate[key64], hospitalByDate[key64], deceasedByDate[key64]))
+		}
+		_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
+		return
 	}
 
 	_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Dit heb ik niet begrepen.\n%s", conf.HelpText)))
