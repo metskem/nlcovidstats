@@ -32,14 +32,14 @@ func LoadInputFile(filename string) error {
 			log.Printf("reading file %s", filename)
 			file, err := ioutil.ReadFile(filename)
 			if err != nil {
-				log.Printf("failed reading input file %s: %s\n", filename, err)
+				log.Printf("failed reading input file %s: %s", filename, err)
 				return err
 			}
 			log.Printf("json-parsing file %s", filename)
 			var rawStats []model.RawStat
 			err = json.Unmarshal(file, &rawStats)
 			if err != nil {
-				log.Printf("failed unmarshalling json from file %s, error: %s\n", filename, err)
+				log.Printf("failed unmarshalling json from file %s, error: %s", filename, err)
 				return err
 			}
 			log.Printf("we found %d elements", len(rawStats))

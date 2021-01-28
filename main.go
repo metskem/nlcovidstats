@@ -84,14 +84,14 @@ func main() {
 
 				// check if someone added me to a group
 				if update.Message.NewChatMembers != nil && len(*update.Message.NewChatMembers) > 0 {
-					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.Title, chat.FirstName, chat.LastName)
+					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)", chat.ID, chat.Title, chat.FirstName, chat.LastName)
 				}
 
 				// check if someone removed me from a group
 				if update.Message.LeftChatMember != nil {
 					leftChatMember := *update.Message.LeftChatMember
 					if leftChatMember.UserName == util.Me.UserName {
-						log.Printf("chat removed, chatid: %d, chat: %s (%s %s)\n", chat.ID, chat.Title, chat.FirstName, chat.LastName)
+						log.Printf("chat removed, chatid: %d, chat: %s (%s %s)", chat.ID, chat.Title, chat.FirstName, chat.LastName)
 					}
 
 				}
