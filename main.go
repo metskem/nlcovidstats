@@ -98,7 +98,6 @@ func main() {
 
 				}
 			}
-			fmt.Println("")
 		}
 	} else {
 		log.Printf("failed getting Bot updatesChannel, error: %v", err)
