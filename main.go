@@ -80,11 +80,13 @@ func main() {
 				// check if someone started a new chat
 				if chat.IsPrivate() && cmdMe && update.Message.Text == "/start" {
 					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)", chat.ID, chat.UserName, chat.FirstName, chat.LastName)
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, conf.HelpText))
 				}
 
 				// check if someone added me to a group
 				if update.Message.NewChatMembers != nil && len(*update.Message.NewChatMembers) > 0 {
 					log.Printf("new chat added, chatid: %d, chat: %s (%s %s)", chat.ID, chat.Title, chat.FirstName, chat.LastName)
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, conf.HelpText))
 				}
 
 				// check if someone removed me from a group

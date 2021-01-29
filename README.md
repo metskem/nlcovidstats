@@ -11,3 +11,7 @@ laatsteweek - geeft de landelijke cijfers van de afgelopen 7 dagen
 land - Grafiek met COVID stats voor het hele land
 gemeente -  <Gemeente Naam> -  Grafiek met COVID stats voor <Gemeente Naam>, voorbeeld: /gemeente Rotterdam
 ```
+
+## TODO
+
+Broadcast? ==> requires an administration of all members

@@ -400,10 +400,10 @@ func HandleCommand(update *tgbotapi.Update) {
 			keys = append(keys, int(k))
 		}
 		sort.Ints(keys)
-		msg := "```\ndatum      besmet    zkh    overldn\n"
+		msg := "```\ndatum      besmet  zkh  overldn\n"
 		for _, key := range keys {
 			key64 := int64(key)
-			msg = fmt.Sprintf("%s%s", msg, fmt.Sprintf("%s  %5d   %4d    %4d\n", time.Unix(key64, 0).Format(conf.DateFormat), casesByDate[key64], hospitalByDate[key64], deceasedByDate[key64]))
+			msg = fmt.Sprintf("%s%s", msg, fmt.Sprintf("%s  %5d %4d  %4d\n", time.Unix(key64, 0).Format(conf.DateFormat), casesByDate[key64], hospitalByDate[key64], deceasedByDate[key64]))
 		}
 		msg = fmt.Sprintf("%s\n```", msg)
 		msgConfig := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
