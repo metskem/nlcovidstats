@@ -24,7 +24,7 @@ var (
 	HelpText             = "Deze Bot leest dagelijks om 15:25 data van RIVM, en genereert grafieken en overzichten.\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/laatsteweek - geeft de landelijke cijfers van de afgelopen 7 dagen\n/land - Geeft COVID-19 grafiek van heel NL\n/gemeente <Gemeentenaam> - Geeft COVID-19 grafiek van gemeentenaam, b.v. /gemeente Rijssen-Holten"
 	HashValueOfInputFile string
 	//RefreshTime          = "18:12" // GMT
-	RefreshTime = "14:25" // GMT
+	RefreshTime = "14:20" // GMT
 	DateFormat  = "2006-01-02"
 )
 
