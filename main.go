@@ -38,7 +38,7 @@ func main() {
 		log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
 	}
 
-	// refresh the inputfile every day at 15:25
+	// refresh the inputfile every day at 15:17
 	go func() {
 		ctx := context.Background()
 		now := time.Now()
