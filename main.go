@@ -47,6 +47,7 @@ func main() {
 			log.Printf("failed parsing start datetime, error: %s", err)
 		} else {
 			delay := time.Hour * 24
+			log.Printf("starting reload schedule with startTime %s and delay %s", startTime, delay)
 			for _ = range util.Cron(ctx, startTime, delay) {
 				err = util.LoadInputFile(conf.InputFile)
 				if err != nil {
