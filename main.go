@@ -8,6 +8,7 @@ import (
 	"github.com/metskem/nlcovidstats/util"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -42,7 +43,11 @@ func main() {
 	go func() {
 		ctx := context.Background()
 		now := time.Now()
-		startTime, err := time.Parse("2006-01-02 15:04", fmt.Sprintf("%d-%s-%s %s", now.Year(), fmt.Sprintf("%02d", now.Month()), fmt.Sprintf("%02d", now.Day()), conf.RefreshTime))
+		tz := "CET"
+		if util.InDST(now) {
+			tz = "CEST"
+		}
+		startTime, err := time.Parse("2 January, 2006 15:04 (MST)", fmt.Sprintf("%d %s, %d %s:%s (%s)", now.Day(), now.Month(), now.Year(), strings.Split(conf.RefreshTime, ":")[0], strings.Split(conf.RefreshTime, ":")[1], tz))
 		if err != nil {
 			log.Printf("failed parsing start datetime, error: %s", err)
 		} else {

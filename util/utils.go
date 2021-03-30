@@ -458,3 +458,10 @@ func Cron(ctx context.Context, startTime time.Time, delay time.Duration) <-chan 
 
 	return stream
 }
+
+func InDST(t time.Time) bool {
+	jan1st := time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location()) // January 1st is always outside DST window
+	_, off1 := t.Zone()
+	_, off2 := jan1st.Zone()
+	return off1 != off2
+}
