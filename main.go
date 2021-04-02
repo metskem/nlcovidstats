@@ -15,6 +15,7 @@ import (
 func main() {
 
 	conf.EnvironmentComplete()
+	log.SetOutput(os.Stdout)
 
 	var err error
 
