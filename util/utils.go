@@ -9,7 +9,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/metskem/nlcovidstats/conf"
 	"github.com/metskem/nlcovidstats/model"
-	"github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/v2"
 	"io"
 	"io/ioutil"
 	"log"
