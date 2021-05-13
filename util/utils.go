@@ -20,70 +20,110 @@ import (
 	"time"
 )
 
+const httpTimeout = time.Second * 60
+const MagicTime = "Thu, 2 January 2006 15:04:05 MST"
+
 var Me tgbotapi.User
 var Bot *tgbotapi.BotAPI
+var downloadedOnce = false
 
 func LoadInputFile(filename string) error {
-	changed, err := RefreshInputFile()
-	if err != nil {
-		log.Printf("failed to refresh the file/url, error: %s", err)
-	} else {
-		if changed {
-			log.Printf("reading file %s", filename)
-			file, err := ioutil.ReadFile(filename)
-			if err != nil {
-				log.Printf("failed reading input file %s: %s", filename, err)
-				return err
-			}
-			log.Printf("json-parsing file %s", filename)
-			var rawStats []model.RawStat
-			err = json.Unmarshal(file, &rawStats)
-			if err != nil {
-				log.Printf("failed unmarshalling json from file %s, error: %s", filename, err)
-				return err
-			}
-			log.Printf("we found %d elements", len(rawStats))
-
-			conf.Stats = nil
-			for _, rawStat := range rawStats {
-				stat := model.Stat{
-					DateOfPublication: rawStat.DateOfPublication,
-					MunicipalityName:  rawStat.MunicipalityName,
-					Province:          rawStat.Province,
-					TotalReported:     rawStat.TotalReported,
-					HospitalAdmission: rawStat.HospitalAdmission,
-					Deceased:          rawStat.Deceased,
-				}
-				conf.Stats = append(conf.Stats, stat)
-			}
-			rawStats = nil
-			log.Print("json marshalling...")
-			ba, err := json.MarshalIndent(conf.Stats, "", " ")
-			if err != nil {
-				log.Printf("failed json marshalling, error: %s", err)
-			} else {
-				log.Printf("writing to file %s", conf.OutputFile)
-				err = ioutil.WriteFile(conf.OutputFile, ba, os.ModePerm)
+	var err error
+	var fileChanged = true
+	if downloadedOnce {
+		fileChanged = checkIfFileChanged()
+	}
+	if fileChanged {
+		changed, err := refreshInputFile()
+		if err != nil {
+			log.Printf("failed to refresh the file/url, error: %s", err)
+		} else {
+			downloadedOnce = true
+			if changed {
+				log.Printf("reading file %s", filename)
+				file, err := ioutil.ReadFile(filename)
 				if err != nil {
-					log.Printf("failed to write output file %s, error: %s", conf.OutputFile, err)
+					log.Printf("failed reading input file %s: %s", filename, err)
 					return err
 				}
+				log.Printf("json-parsing file %s", filename)
+				var rawStats []model.RawStat
+				err = json.Unmarshal(file, &rawStats)
+				if err != nil {
+					log.Printf("failed unmarshalling json from file %s, error: %s", filename, err)
+					return err
+				}
+				log.Printf("we found %d elements", len(rawStats))
+
+				conf.Stats = nil
+				for _, rawStat := range rawStats {
+					stat := model.Stat{
+						DateOfPublication: rawStat.DateOfPublication,
+						MunicipalityName:  rawStat.MunicipalityName,
+						Province:          rawStat.Province,
+						TotalReported:     rawStat.TotalReported,
+						HospitalAdmission: rawStat.HospitalAdmission,
+						Deceased:          rawStat.Deceased,
+					}
+					conf.Stats = append(conf.Stats, stat)
+				}
+				rawStats = nil
+				log.Print("json marshalling...")
+				ba, err := json.MarshalIndent(conf.Stats, "", " ")
+				if err != nil {
+					log.Printf("failed json marshalling, error: %s", err)
+				} else {
+					log.Printf("writing to file %s", conf.OutputFile)
+					err = ioutil.WriteFile(conf.OutputFile, ba, os.ModePerm)
+					if err != nil {
+						log.Printf("failed to write output file %s, error: %s", conf.OutputFile, err)
+						return err
+					}
+				}
+			} else {
+				log.Printf("input file did not change, not reloading...")
 			}
-		} else {
-			log.Printf("input file did not change, not reloading...")
 		}
 	}
 	return err
 }
 
+/** Check max 30 times each 30 secs if file has changed, if lastModified.Day is today then return true */
+func checkIfFileChanged() bool {
+	now := time.Now()
+	client := &http.Client{Timeout: httpTimeout}
+	var maxTries = 30
+	for i := 0; i < maxTries; i++ {
+		response, err := client.Head(conf.RIVMDownloadURL)
+		if err != nil {
+			log.Printf("failed to HEAD %s: %s", conf.RIVMDownloadURL, err)
+			return false
+		} else {
+			lastModifiedStr := response.Header.Get("Last-Modified")
+			lastModified, err := time.Parse(MagicTime, lastModifiedStr)
+			if err != nil {
+				log.Printf("failed to parse Last-Modified header (%s) : %s", lastModifiedStr, err)
+			}
+			log.Printf("(%d/%d) Last-Modified for %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
+			if lastModified.Day() < now.Day() {
+				return true
+			}
+		}
+		time.Sleep(time.Second * 30)
+	}
+	return false
+}
+
 // Return true if the file (URL) has changed
-func RefreshInputFile() (bool, error) {
+func refreshInputFile() (bool, error) {
 	var err error
 	log.Printf("downloading new data from %s ...", conf.RIVMDownloadURL)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
-		}}
+		},
+		Timeout: httpTimeout,
+	}
 	resp, err := client.Get(conf.RIVMDownloadURL)
 	if err != nil {
 		log.Printf("failed to download the RIVM data from %s, error: %s", conf.RIVMDownloadURL, err)

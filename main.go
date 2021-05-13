@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const MagicTime = "2 January, 2006 15:04 (MST)"
+
 func main() {
 
 	conf.EnvironmentComplete()
@@ -40,7 +42,7 @@ func main() {
 		log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
 	}
 
-	// refresh the inputfile every day at 15:17
+	// refresh the inputfile every day at 15:15
 	go func() {
 		ctx := context.Background()
 		now := time.Now()
@@ -48,7 +50,7 @@ func main() {
 		if util.InDST(now) {
 			tz = "CEST"
 		}
-		startTime, err := time.Parse("2 January, 2006 15:04 (MST)", fmt.Sprintf("%d %s, %d %s:%s (%s)", now.Day(), now.Month(), now.Year(), strings.Split(conf.RefreshTime, ":")[0], strings.Split(conf.RefreshTime, ":")[1], tz))
+		startTime, err := time.Parse(MagicTime, fmt.Sprintf("%d %s, %d %s:%s (%s)", now.Day(), now.Month(), now.Year(), strings.Split(conf.RefreshTime, ":")[0], strings.Split(conf.RefreshTime, ":")[1], tz))
 		if err != nil {
 			log.Printf("failed parsing start datetime, error: %s", err)
 		} else {
@@ -59,6 +61,7 @@ func main() {
 				if err != nil {
 					log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
 				}
+				_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, "Nieuwe RIVM data beschikbaar!"))
 			}
 		}
 	}()
