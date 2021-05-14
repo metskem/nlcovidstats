@@ -105,7 +105,7 @@ func checkIfFileChanged() bool {
 				log.Printf("failed to parse Last-Modified header (%s) : %s", lastModifiedStr, err)
 			}
 			log.Printf("(%d/%d) Last-Modified for %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
-			if lastModified.Day() < now.Day() {
+			if lastModified.Day() == now.Day() {
 				return true
 			}
 		}
