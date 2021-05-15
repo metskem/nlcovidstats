@@ -21,7 +21,7 @@ import (
 )
 
 const httpTimeout = time.Second * 60
-const MagicTime = "Thu, 2 January 2006 15:04:05 MST"
+const MagicTime = "Mon, 2 January 2006 15:04:05 MST"
 
 var Me tgbotapi.User
 var Bot *tgbotapi.BotAPI
