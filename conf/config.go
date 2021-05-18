@@ -7,6 +7,7 @@ import (
 )
 
 const ChatIDHarry = 337345957
+const ChatIDClaudia = 1140134411
 
 var (
 	// Variables to identify the build

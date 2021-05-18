@@ -62,6 +62,7 @@ func main() {
 					log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
 				}
 				_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, "Nieuwe RIVM data beschikbaar!"))
+				_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, "Nieuwe RIVM data beschikbaar!"))
 			}
 		}
 	}()
