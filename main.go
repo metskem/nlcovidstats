@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const MagicTime = "2 January, 2006 15:04 (MST)"
+const MagicTimeForStart = "2 January, 2006 15:04 (MST)"
 
 func main() {
 
@@ -50,19 +50,22 @@ func main() {
 		if util.InDST(now) {
 			tz = "CEST"
 		}
-		startTime, err := time.Parse(MagicTime, fmt.Sprintf("%d %s, %d %s:%s (%s)", now.Day(), now.Month(), now.Year(), strings.Split(conf.RefreshTime, ":")[0], strings.Split(conf.RefreshTime, ":")[1], tz))
+		startTime, err := time.Parse(MagicTimeForStart, fmt.Sprintf("%d %s, %d %s:%s (%s)", now.Day(), now.Month(), now.Year(), strings.Split(conf.RefreshTime, ":")[0], strings.Split(conf.RefreshTime, ":")[1], tz))
 		if err != nil {
 			log.Printf("failed parsing start datetime, error: %s", err)
 		} else {
 			delay := time.Hour * 24
 			log.Printf("starting reload schedule with startTime %s and delay %s", startTime, delay)
-			for _ = range util.Cron(ctx, startTime, delay) {
+			for range util.Cron(ctx, startTime, delay) {
 				err = util.LoadInputFile(conf.InputFile)
 				if err != nil {
 					log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
+				} else {
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, "Nieuwe RIVM data beschikbaar!"))
+					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, "Nieuwe RIVM data beschikbaar!"))
 				}
-				_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, "Nieuwe RIVM data beschikbaar!"))
-				_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, "Nieuwe RIVM data beschikbaar!"))
 			}
 		}
 	}()

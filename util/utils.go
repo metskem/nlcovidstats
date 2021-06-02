@@ -21,7 +21,7 @@ import (
 )
 
 const httpTimeout = time.Second * 60
-const MagicTime = "Mon, 2 January 2006 15:04:05 MST"
+const MagicTimeLastModified = "Mon, 2 Jan 2006 15:04:05 MST"
 
 var Me tgbotapi.User
 var Bot *tgbotapi.BotAPI
@@ -100,7 +100,7 @@ func checkIfFileChanged() bool {
 			return false
 		} else {
 			lastModifiedStr := response.Header.Get("Last-Modified")
-			lastModified, err := time.Parse(MagicTime, lastModifiedStr)
+			lastModified, err := time.Parse(MagicTimeLastModified, lastModifiedStr)
 			if err != nil {
 				log.Printf("failed to parse Last-Modified header (%s) : %s", lastModifiedStr, err)
 			}
