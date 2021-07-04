@@ -60,11 +60,13 @@ func main() {
 				err = util.LoadInputFile(conf.InputFile)
 				if err != nil {
 					log.Printf("failed loading input file %s, error: %s", conf.InputFile, err)
-					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
-					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
+					for _, id := range conf.IDs {
+						_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
+					}
 				} else {
-					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDHarry, "Nieuwe RIVM data beschikbaar!"))
-					_, _ = util.Bot.Send(tgbotapi.NewMessage(conf.ChatIDClaudia, "Nieuwe RIVM data beschikbaar!"))
+					for _, id := range conf.IDs {
+						_, _ = util.Bot.Send(tgbotapi.NewMessage(id, "Nieuwe RIVM data beschikbaar!"))
+					}
 				}
 			}
 		}
