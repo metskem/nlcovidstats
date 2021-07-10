@@ -9,6 +9,9 @@ import (
 const ChatIDHarry = 337345957
 const ChatIDClaudia = 1140134411
 const ChatIDAnneke = 1366662634
+const ChatIDEsther = 1674565467
+
+var IDs = [4]int64{ChatIDAnneke, ChatIDClaudia, ChatIDHarry, ChatIDEsther}
 
 var (
 	// Variables to identify the build
@@ -16,7 +19,6 @@ var (
 	VersionTag string
 	BuildTime  string
 
-	IDs        = [3]int64{ChatIDAnneke, ChatIDClaudia, ChatIDHarry}
 	Stats      []model.Stat
 	BotToken   = os.Getenv("BOT_TOKEN")
 	DebugStr   = os.Getenv("DEBUG")
