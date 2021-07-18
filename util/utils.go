@@ -59,6 +59,10 @@ func LoadInputFile(filename string) error {
 				}
 				log.Printf("we found %d elements", len(rawStats))
 
+				casesByDate = make(map[int64]int)
+				hospitalByDate = make(map[int64]int)
+				deceasedByDate = make(map[int64]int)
+
 				for ix, rawStat := range rawStats {
 					casesByDate[rawStat.DateOfPublication.Time().Unix()] = casesByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.TotalReported
 					hospitalByDate[rawStat.DateOfPublication.Time().Unix()] = hospitalByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.HospitalAdmission
