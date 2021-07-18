@@ -24,7 +24,7 @@ var (
 	InputFile = "input.json"
 	//RIVMDownloadURL      = "https://www.computerhok.nl/input.json"
 	RIVMDownloadURL      = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
-	HelpText             = "Deze Bot leest dagelijks om 15:15 data van RIVM, en genereert grafieken en overzichten.\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/recent - geeft de landelijke cijfers van de afgelopen 10 dagen\n/land - Geeft COVID-19 grafiek van heel NL"
+	HelpText             = "Deze Bot leest dagelijks om 15:15 data van RIVM, en genereert grafieken en overzichten.\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/recent - geeft de landelijke cijfers van de afgelopen 10 dagen\n/grafiek - Geeft de landelijke COVID-19 grafiek"
 	HashValueOfInputFile string
 	RefreshTime          = "15:15" // local time
 	DateFormat           = "2006-01-02"

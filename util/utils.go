@@ -305,12 +305,12 @@ func HandleCommand(update *tgbotapi.Update) {
 		return
 	}
 
-	if strings.HasPrefix(update.Message.Text, "/land") {
+	if strings.HasPrefix(update.Message.Text, "/grafiek") {
 		chartInput, err := GetChartInput()
 		if err == nil {
 			chartFile, err := GetChartFile(chartInput)
 			if err != nil {
-				msg := fmt.Sprintf("Fout bij het genereren van de grafiek voor land, fout: %s", err)
+				msg := fmt.Sprintf("Fout bij het genereren van de grafiek: %s", err)
 				log.Printf(msg)
 				_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
 			} else {
@@ -319,7 +319,7 @@ func HandleCommand(update *tgbotapi.Update) {
 			}
 			return
 		} else {
-			msg := fmt.Sprintf("Fout bij het genereren van de grafiek date voor land, fout: %s", err)
+			msg := fmt.Sprintf("Fout bij het genereren van de grafiek: %s", err)
 			log.Printf(msg)
 			_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, msg))
 		}
