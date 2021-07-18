@@ -57,7 +57,6 @@ func LoadInputFile(filename string) error {
 					log.Printf("fout bij unmarshalling json bestand %s : %s", filename, err)
 					return err
 				}
-				file = nil
 				log.Printf("we found %d elements", len(rawStats))
 
 				casesByDate = make(map[int64]int)

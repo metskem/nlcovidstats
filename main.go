@@ -16,6 +16,11 @@ const MagicTimeForStart = "2 January, 2006 15:04 (MST)"
 
 func main() {
 
+	//  used for memory profiling, import net/http/pprof
+	//go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
+
 	conf.EnvironmentComplete()
 	log.SetOutput(os.Stdout)
 
