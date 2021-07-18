@@ -57,6 +57,7 @@ func LoadInputFile(filename string) error {
 					log.Printf("fout bij unmarshalling json bestand %s : %s", filename, err)
 					return err
 				}
+				file = nil
 				log.Printf("we found %d elements", len(rawStats))
 
 				casesByDate = make(map[int64]int)
@@ -93,9 +94,9 @@ func checkIfFileChanged() bool {
 			lastModifiedStr := response.Header.Get("Last-Modified")
 			lastModified, err := time.Parse(MagicTimeLastModified, lastModifiedStr)
 			if err != nil {
-				log.Printf("failed to parse Last-Modified header (%s) : %s", lastModifiedStr, err)
+				log.Printf("fout bij parsen van Last-Modified header (%s) : %s", lastModifiedStr, err)
 			}
-			log.Printf("(%d/%d) Last-Modified for %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
+			log.Printf("(%d/%d) Last-Modified voor %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
 			if lastModified.Day() == now.Day() {
 				return true
 			}
@@ -108,7 +109,7 @@ func checkIfFileChanged() bool {
 // Return true if the file (URL) has changed
 func refreshInputFile() (bool, error) {
 	var err error
-	log.Printf("downloading new data from %s ...", conf.RIVMDownloadURL)
+	log.Printf("downloaden nieuwe data van %s ...", conf.RIVMDownloadURL)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -117,7 +118,7 @@ func refreshInputFile() (bool, error) {
 	}
 	resp, err := client.Get(conf.RIVMDownloadURL)
 	if err != nil {
-		log.Printf("fout bij downloade RIVM data van %s: %s", conf.RIVMDownloadURL, err)
+		log.Printf("fout bij downloaden RIVM data van %s: %s", conf.RIVMDownloadURL, err)
 	} else {
 		if resp.StatusCode != http.StatusOK {
 			if resp != nil {
@@ -132,7 +133,7 @@ func refreshInputFile() (bool, error) {
 			newFileName := fmt.Sprintf("%s.new", conf.InputFile)
 			newFile, err := os.Create(newFileName)
 			if err != nil {
-				log.Printf("failed to create file %s, error: %s", newFileName, err)
+				log.Printf("fout bij aanmaken bestand %s: %s", newFileName, err)
 			} else {
 				defer newFile.Close()
 				// Write the body to file
@@ -142,12 +143,12 @@ func refreshInputFile() (bool, error) {
 					log.Printf("fout bij inlezen bestand %s: %s", newFileName, err)
 				} else {
 					newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
-					log.Printf("md5 sum of %s: %s", newFileName, newHashValue)
+					log.Printf("md5 sum van %s: %s", newFileName, newHashValue)
 					if newHashValue != conf.HashValueOfInputFile {
 						if _, err := os.Stat(conf.InputFile); os.IsExist(err) {
 							err = os.Remove(conf.InputFile)
 							if err != nil {
-								log.Printf("failed to remove input file %s, error: %s", conf.InputFile, err)
+								log.Printf("fout bij verwijderen van invoer bestand %s: %s", conf.InputFile, err)
 								return false, err
 							}
 						} else {
@@ -161,7 +162,7 @@ func refreshInputFile() (bool, error) {
 							}
 						}
 					} else {
-						log.Printf("hash value (%s) of %s is same as hash value of %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, conf.InputFile)
+						log.Printf("hash waarde (%s) van %s is gelijk aan hash waarde van %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, conf.InputFile)
 					}
 				}
 			}
