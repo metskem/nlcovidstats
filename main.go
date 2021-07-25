@@ -70,7 +70,7 @@ func main() {
 					}
 				} else {
 					for _, id := range conf.IDs {
-						msgConfig := tgbotapi.NewMessage(id, util.GetRecentData())
+						msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
 						msgConfig.ParseMode = tgbotapi.ModeMarkdown
 						_, _ = util.Bot.Send(msgConfig)
 					}

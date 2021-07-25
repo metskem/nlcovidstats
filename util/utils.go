@@ -327,7 +327,7 @@ func HandleCommand(update *tgbotapi.Update) {
 	}
 
 	if strings.HasPrefix(update.Message.Text, "/recent") {
-		msg := GetRecentData()
+		msg := GetRecentData(10)
 		msgConfig := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
 		msgConfig.ParseMode = tgbotapi.ModeMarkdown
 		_, _ = Bot.Send(msgConfig)
@@ -337,13 +337,14 @@ func HandleCommand(update *tgbotapi.Update) {
 	_, _ = Bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Dit heb ik niet begrepen.\n%s", conf.HelpText)))
 }
 
-func GetRecentData() string {
+func GetRecentData(daysAgo int64) string {
 	var casesByDateLastXDays = make(map[int64]int)
 	var hospitalByDateLastXDays = make(map[int64]int)
 	var deceasedByDateLastXDays = make(map[int64]int)
-	tenDaysAgo := time.Now().Add(time.Hour * -24 * 10).Unix()
+	timeDiffNano := time.Duration(daysAgo * 24 * time.Hour.Nanoseconds())
+	XDaysAgo := time.Now().Add(-timeDiffNano).Unix()
 	for date, _ := range casesByDate {
-		if date > tenDaysAgo {
+		if date > XDaysAgo {
 			casesByDateLastXDays[date] = casesByDate[date]
 			hospitalByDateLastXDays[date] = hospitalByDate[date]
 			deceasedByDateLastXDays[date] = deceasedByDate[date]
