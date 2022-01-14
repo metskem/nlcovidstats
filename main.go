@@ -38,6 +38,7 @@ func main() {
 	if err == nil {
 		meDetails = fmt.Sprintf("BOT: ID:%d UserName:%s FirstName:%s LastName:%s", util.Me.ID, util.Me.UserName, util.Me.FirstName, util.Me.LastName)
 		log.Printf("Bot gestart: %s, versie:%s, bouw-tijdstip:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
+		log.Printf("Gevonden chat ids: %v", conf.ChatIDs)
 	} else {
 		log.Printf("Bot.GetMe() gefaald: %v", err)
 	}

@@ -47,7 +47,6 @@ func EnvironmentComplete() {
 		ChatIDs[i], _ = strconv.ParseInt(chatIDsString[i], 0, 64)
 		chatids = fmt.Sprintf("%s %d", chatids, ChatIDs[i])
 	}
-	log.Printf("gevonden chat ids: %s\n", chatids)
 
 	if !envComplete {
 		log.Fatal("een of meer envvars ontbreken, afbreken...")
