@@ -9,8 +9,9 @@ const ChatIDHarry = 337345957
 const ChatIDClaudia = 1140134411
 const ChatIDAnneke = 1366662634
 const ChatIDEsther = 1674565467
+const ChatIDWim = 1619715216
 
-var IDs = [4]int64{ChatIDAnneke, ChatIDClaudia, ChatIDHarry, ChatIDEsther}
+var IDs = []int64{ChatIDAnneke, ChatIDClaudia, ChatIDHarry, ChatIDEsther, ChatIDWim}
 
 var (
 	// Variables to identify the build
