@@ -65,11 +65,11 @@ func main() {
 				err = util.LoadInputFile(conf.InputFile)
 				if err != nil {
 					log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile, err)
-					for _, id := range conf.IDs {
+					for _, id := range conf.ChatIDs {
 						_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
 					}
 				} else {
-					for _, id := range conf.IDs {
+					for _, id := range conf.ChatIDs {
 						msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
 						msgConfig.ParseMode = tgbotapi.ModeMarkdown
 						_, _ = util.Bot.Send(msgConfig)
