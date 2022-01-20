@@ -33,11 +33,33 @@ func (j JsonDateOfPublication) Time() time.Time {
 	return time.Time(j)
 }
 
+type JsonDateOfWeekStart time.Time
+
+func (j *JsonDateOfWeekStart) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	//s = strings.Split(s, " ")[0]
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return err
+	}
+	*j = JsonDateOfWeekStart(t)
+	return nil
+}
+
+func (j JsonDateOfWeekStart) MarshalJSON() ([]byte, error) {
+	return json.Marshal(j.Time())
+}
+
+func (j JsonDateOfWeekStart) Time() time.Time {
+	return time.Time(j)
+}
+
 type ChartInput struct {
 	Title           string
 	TimeStamps      []time.Time
 	Cases           []float64
 	Hospital        []float64
+	IC              []float64
 	Deceased        []float64
 	HighestYAxisSec int
 	HighestYAxis    int
@@ -47,8 +69,8 @@ type HospitalAdmissions []struct{ HospitalAdmission }
 
 type HospitalAdmission struct {
 	//Version                       int    `json:"Version"`
-	DateOfReport string `json:"Date_of_report"`
-	//DateOfStatisticsWeekStart     string `json:"Date_of_statistics_week_start"`
+	//DateOfReport JsonDateOfWeekStart `json:"Date_of_report"`
+	DateOfStatisticsWeekStart JsonDateOfWeekStart `json:"Date_of_statistics_week_start"`
 	//AgeGroup                      string `json:"Age_group"`
 	//HospitalAdmissionNotification int    `json:"Hospital_admission_notification"`
 	HospitalAdmission int `json:"Hospital_admission"`

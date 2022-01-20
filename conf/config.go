@@ -21,9 +21,9 @@ var (
 	Debug            bool
 	InputFile1       = "input1.json"
 	InputFile2       = "input2.json"
-	RIVMDownloadURL1 = "https://www.computerhok.nl/input.json"
-	//RIVMDownloadURL1     = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
-	RIVMDownloadURL2     = "https://data.rivm.nl/covid-19/COVID-19_ziekenhuis_ic_opnames_per_leeftijdsgroep.json"
+	RIVMDownloadURL1 = "https://data.rivm.nl/covid-19/COVID-19_ziekenhuis_ic_opnames_per_leeftijdsgroep.json"
+	//RIVMDownloadURL2 = "https://www.computerhok.nl/input.json"
+	RIVMDownloadURL2     = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.json"
 	HelpText             = "Deze Bot leest dagelijks om 15:15 data van RIVM, en genereert grafieken en overzichten.\nDe volgende commando's kunt u geven:\n/help - Geeft deze tekst\n/recent - geeft de landelijke cijfers van de afgelopen 10 dagen\n/grafiek - Geeft de landelijke COVID-19 grafiek"
 	HashValueOfInputFile string
 	RefreshTime          = "15:15" // local time

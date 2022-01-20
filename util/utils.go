@@ -27,52 +27,97 @@ var Bot *tgbotapi.BotAPI
 var downloadedOnce = false
 
 var totalStats int
-var casesByDate = make(map[int64]int)
 var hospitalByDate = make(map[int64]int)
+var ICByDate = make(map[int64]int)
+var casesByDate = make(map[int64]int)
 var deceasedByDate = make(map[int64]int)
 
-func LoadInputFile(fromUrl, filename string) error {
+func LoadInputFile1() error {
 	var err error
 	var fileChanged = true
 	if downloadedOnce {
-		fileChanged = checkIfFileChanged(fromUrl)
+		fileChanged = checkIfFileChanged(conf.RIVMDownloadURL1)
 	}
 	if fileChanged {
-		changed, err := refreshInputFile(fromUrl, filename)
+		changed, err := refreshInputFile(conf.RIVMDownloadURL1, conf.InputFile1)
 		if err != nil {
-			log.Printf("fout bij verversen bestand/url : %s", err)
+			log.Printf("fout bij verversen bestand/url %s: %s", conf.RIVMDownloadURL1, err)
 		} else {
 			downloadedOnce = true
 			if changed {
-				log.Printf("lezen bestand %s", filename)
-				file, err := ioutil.ReadFile(filename)
+				log.Printf("lezen bestand %s", conf.InputFile1)
+				file, err := ioutil.ReadFile(conf.InputFile1)
 				if err != nil {
-					log.Printf("fout bij lezen bestand %s: %s", filename, err)
+					log.Printf("fout bij lezen bestand %s: %s", conf.InputFile1, err)
 					return err
 				}
-				log.Printf("json-parsen bestand %s", filename)
+				log.Printf("json-parsen bestand %s", conf.InputFile1)
+				var hospitalAdms []model.HospitalAdmission
+				err = json.Unmarshal(file, &hospitalAdms)
+				if err != nil {
+					log.Printf("fout bij unmarshalling json bestand %s : %s", conf.InputFile1, err)
+					return err
+				}
+				log.Printf("we vonden %d elementen", len(hospitalAdms))
+
+				hospitalByDate = make(map[int64]int)
+				ICByDate = make(map[int64]int)
+
+				for ix, hospitalAdm := range hospitalAdms {
+					hospitalByDate[hospitalAdm.DateOfStatisticsWeekStart.Time().Unix()] = hospitalByDate[hospitalAdm.DateOfStatisticsWeekStart.Time().Unix()] + hospitalAdm.HospitalAdmission
+					ICByDate[hospitalAdm.DateOfStatisticsWeekStart.Time().Unix()] = ICByDate[hospitalAdm.DateOfStatisticsWeekStart.Time().Unix()] + hospitalAdm.ICAdmission
+					totalStats = ix
+				}
+				log.Printf("%d stats gelezen van %s", totalStats, conf.InputFile1)
+				hospitalAdms = nil
+			} else {
+				log.Printf("invoer bestand %s niet gewijzigd, niet herladen...", conf.InputFile1)
+			}
+		}
+	}
+	return err
+}
+
+func LoadInputFile2() error {
+	var err error
+	var fileChanged = true
+	if downloadedOnce {
+		fileChanged = checkIfFileChanged(conf.RIVMDownloadURL2)
+	}
+	if fileChanged {
+		changed, err := refreshInputFile(conf.RIVMDownloadURL2, conf.InputFile2)
+		if err != nil {
+			log.Printf("fout bij verversen bestand/url %s: %s", conf.RIVMDownloadURL2, err)
+		} else {
+			downloadedOnce = true
+			if changed {
+				log.Printf("lezen bestand %s", conf.InputFile2)
+				file, err := ioutil.ReadFile(conf.InputFile2)
+				if err != nil {
+					log.Printf("fout bij lezen bestand %s: %s", conf.InputFile2, err)
+					return err
+				}
+				log.Printf("json-parsen bestand %s", conf.InputFile2)
 				var rawStats []model.RawStat
 				err = json.Unmarshal(file, &rawStats)
 				if err != nil {
-					log.Printf("fout bij unmarshalling json bestand %s : %s", filename, err)
+					log.Printf("fout bij unmarshalling json bestand %s : %s", conf.InputFile2, err)
 					return err
 				}
-				log.Printf("we found %d elements", len(rawStats))
+				log.Printf("we vonden %d elementen", len(rawStats))
 
 				casesByDate = make(map[int64]int)
-				hospitalByDate = make(map[int64]int)
 				deceasedByDate = make(map[int64]int)
 
 				for ix, rawStat := range rawStats {
 					casesByDate[rawStat.DateOfPublication.Time().Unix()] = casesByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.TotalReported
-					//hospitalByDate[rawStat.DateOfPublication.Time().Unix()] = hospitalByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.HospitalAdmission
 					deceasedByDate[rawStat.DateOfPublication.Time().Unix()] = deceasedByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.Deceased
 					totalStats = ix
 				}
-				log.Printf("%d stats gelezen", totalStats)
+				log.Printf("%d stats gelezen van %s", totalStats, conf.InputFile2)
 				rawStats = nil
 			} else {
-				log.Printf("invoer bestand niet gewijzigd, niet herladen...")
+				log.Printf("invoer bestand %s niet gewijzigd, niet herladen...", conf.InputFile2)
 			}
 		}
 	}
@@ -95,7 +140,7 @@ func checkIfFileChanged(fromUrl string) bool {
 			if err != nil {
 				log.Printf("fout bij parsen van Last-Modified header (%s) : %s", lastModifiedStr, err)
 			}
-			log.Printf("(%d/%d) Last-Modified voor %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL1, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
+			log.Printf("(%d/%d) Last-Modified voor %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL2, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
 			if lastModified.Day() == now.Day() {
 				return true
 			}
@@ -144,8 +189,8 @@ func refreshInputFile(fromUrl, inputFile string) (bool, error) {
 					newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
 					log.Printf("md5 sum van %s: %s", newFileName, newHashValue)
 					if newHashValue != conf.HashValueOfInputFile {
-						if _, err := os.Stat(conf.InputFile1); os.IsExist(err) {
-							err = os.Remove(conf.InputFile1)
+						if _, err := os.Stat(conf.InputFile2); os.IsExist(err) {
+							err = os.Remove(conf.InputFile2)
 							if err != nil {
 								log.Printf("fout bij verwijderen van invoer bestand %s: %s", inputFile, err)
 								return false, err
@@ -189,10 +234,7 @@ func GetChartFile(chartInput *model.ChartInput) (*os.File, error) {
 			ValueFormatter: chart.TimeValueFormatterWithFormat("2006-01-02"),
 		},
 		YAxisSecondary: chart.YAxis{
-			Name: "ZKH opnames / Overleden",
-			//Style: chart.Style{
-			//	TextRotationDegrees: 90,
-			//},
+			Name: "ZKH opnames / IC / Overleden",
 			ValueFormatter: func(v interface{}) string {
 				if vf, isFloat := v.(float64); isFloat {
 					return fmt.Sprintf("%0.0f", vf)
@@ -238,6 +280,7 @@ func GetChartInput() (*model.ChartInput, error) {
 	var cases []float64
 	var deceased []float64
 	var hospital []float64
+	var ic []float64
 	var xValues []time.Time
 	var highestYaxis, highestYaxisSec int
 	for _, key := range keys {
@@ -245,6 +288,7 @@ func GetChartInput() (*model.ChartInput, error) {
 		xValues = append(xValues, time.Unix(key64, 0))
 		cases = append(cases, float64(casesByDate[key64]))
 		hospital = append(hospital, float64(hospitalByDate[key64]))
+		ic = append(ic, float64(ICByDate[key64]))
 		deceased = append(deceased, float64(deceasedByDate[key64]))
 		if casesByDate[int64(key)] > highestYaxis {
 			highestYaxis = casesByDate[key64]
@@ -262,6 +306,7 @@ func GetChartInput() (*model.ChartInput, error) {
 		TimeStamps:      xValues,
 		Cases:           cases,
 		Hospital:        hospital,
+		IC:              ic,
 		Deceased:        deceased,
 		HighestYAxisSec: highestYaxisSec,
 		HighestYAxis:    highestYaxis,
@@ -324,7 +369,7 @@ func HandleCommand(update *tgbotapi.Update) {
 	}
 
 	if strings.HasPrefix(update.Message.Text, "/recent") {
-		msg := GetRecentData(10)
+		msg := GetRecentData(20)
 		msgConfig := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
 		msgConfig.ParseMode = tgbotapi.ModeMarkdown
 		_, _ = Bot.Send(msgConfig)
@@ -337,6 +382,7 @@ func HandleCommand(update *tgbotapi.Update) {
 func GetRecentData(daysAgo int64) string {
 	var casesByDateLastXDays = make(map[int64]int)
 	var hospitalByDateLastXDays = make(map[int64]int)
+	var ICByDateLastXDays = make(map[int64]int)
 	var deceasedByDateLastXDays = make(map[int64]int)
 	timeDiffNano := time.Duration(daysAgo * 24 * time.Hour.Nanoseconds())
 	XDaysAgo := time.Now().Add(-timeDiffNano).Unix()
@@ -344,6 +390,7 @@ func GetRecentData(daysAgo int64) string {
 		if date > XDaysAgo {
 			casesByDateLastXDays[date] = casesByDate[date]
 			hospitalByDateLastXDays[date] = hospitalByDate[date]
+			ICByDateLastXDays[date] = ICByDate[date]
 			deceasedByDateLastXDays[date] = deceasedByDate[date]
 		}
 	}
@@ -353,10 +400,10 @@ func GetRecentData(daysAgo int64) string {
 		keys = append(keys, int(k))
 	}
 	sort.Ints(keys)
-	msg := "```\ndatum      besmet  zkh  overldn\n"
+	msg := "```\ndatum      besmet  zkh   IC overldn\n"
 	for _, key := range keys {
 		key64 := int64(key)
-		msg = fmt.Sprintf("%s%s", msg, fmt.Sprintf("%s  %5d %4d  %4d\n", time.Unix(key64, 0).Format(conf.DateFormat), casesByDateLastXDays[key64], hospitalByDateLastXDays[key64], deceasedByDateLastXDays[key64]))
+		msg = fmt.Sprintf("%s%s", msg, fmt.Sprintf("%s  %5d %4d %4d  %4d\n", time.Unix(key64, 0).Format(conf.DateFormat), casesByDateLastXDays[key64], hospitalByDateLastXDays[key64], ICByDateLastXDays[key64], deceasedByDateLastXDays[key64]))
 	}
 	return fmt.Sprintf("%s\n```", msg)
 }

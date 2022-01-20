@@ -43,9 +43,13 @@ func main() {
 		log.Printf("Bot.GetMe() gefaald: %v", err)
 	}
 
-	err = util.LoadInputFile(conf.RIVMDownloadURL1, conf.InputFile1)
+	err = util.LoadInputFile1()
 	if err != nil {
 		log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile1, err)
+	}
+	err = util.LoadInputFile2()
+	if err != nil {
+		log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
 	}
 
 	// refresh the inputfile every day at 15:15
@@ -63,17 +67,23 @@ func main() {
 			delay := time.Hour * 24
 			log.Printf("herlaad schema met starttijd %s en vertraging %s", startTime, delay)
 			for range util.Cron(ctx, startTime, delay) {
-				err = util.LoadInputFile(conf.RIVMDownloadURL1, conf.InputFile1)
-				if err != nil {
-					log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile1, err)
+				if err = util.LoadInputFile1(); err != nil {
+					log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
 					for _, id := range conf.ChatIDs {
 						_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
 					}
 				} else {
-					for _, id := range conf.ChatIDs {
-						msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
-						msgConfig.ParseMode = tgbotapi.ModeMarkdown
-						_, _ = util.Bot.Send(msgConfig)
+					if err = util.LoadInputFile2(); err != nil {
+						log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
+						for _, id := range conf.ChatIDs {
+							_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
+						}
+					} else {
+						for _, id := range conf.ChatIDs {
+							msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
+							msgConfig.ParseMode = tgbotapi.ModeMarkdown
+							_, _ = util.Bot.Send(msgConfig)
+						}
 					}
 				}
 			}
