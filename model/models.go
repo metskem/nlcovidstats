@@ -8,10 +8,8 @@ import (
 
 type RawStats []struct{ RawStat }
 type RawStat struct {
-	DateOfReport      string                `json:"Date_of_report"`
 	DateOfPublication JsonDateOfPublication `json:"Date_of_publication"`
 	TotalReported     int                   `json:"Total_reported"`
-	HospitalAdmission int                   `json:"Hospital_admission"`
 	Deceased          int                   `json:"Deceased"`
 }
 
@@ -43,4 +41,17 @@ type ChartInput struct {
 	Deceased        []float64
 	HighestYAxisSec int
 	HighestYAxis    int
+}
+
+type HospitalAdmissions []struct{ HospitalAdmission }
+
+type HospitalAdmission struct {
+	//Version                       int    `json:"Version"`
+	DateOfReport string `json:"Date_of_report"`
+	//DateOfStatisticsWeekStart     string `json:"Date_of_statistics_week_start"`
+	//AgeGroup                      string `json:"Age_group"`
+	//HospitalAdmissionNotification int    `json:"Hospital_admission_notification"`
+	HospitalAdmission int `json:"Hospital_admission"`
+	//ICAdmissionNotification       int    `json:"IC_admission_notification"`
+	ICAdmission int `json:"IC_admission"`
 }

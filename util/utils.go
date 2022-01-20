@@ -31,14 +31,14 @@ var casesByDate = make(map[int64]int)
 var hospitalByDate = make(map[int64]int)
 var deceasedByDate = make(map[int64]int)
 
-func LoadInputFile(filename string) error {
+func LoadInputFile(fromUrl, filename string) error {
 	var err error
 	var fileChanged = true
 	if downloadedOnce {
-		fileChanged = checkIfFileChanged()
+		fileChanged = checkIfFileChanged(fromUrl)
 	}
 	if fileChanged {
-		changed, err := refreshInputFile()
+		changed, err := refreshInputFile(fromUrl, filename)
 		if err != nil {
 			log.Printf("fout bij verversen bestand/url : %s", err)
 		} else {
@@ -65,7 +65,7 @@ func LoadInputFile(filename string) error {
 
 				for ix, rawStat := range rawStats {
 					casesByDate[rawStat.DateOfPublication.Time().Unix()] = casesByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.TotalReported
-					hospitalByDate[rawStat.DateOfPublication.Time().Unix()] = hospitalByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.HospitalAdmission
+					//hospitalByDate[rawStat.DateOfPublication.Time().Unix()] = hospitalByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.HospitalAdmission
 					deceasedByDate[rawStat.DateOfPublication.Time().Unix()] = deceasedByDate[rawStat.DateOfPublication.Time().Unix()] + rawStat.Deceased
 					totalStats = ix
 				}
@@ -80,14 +80,14 @@ func LoadInputFile(filename string) error {
 }
 
 /** Check max 30 times each 30 secs if file has changed, if lastModified.Day is today then return true */
-func checkIfFileChanged() bool {
+func checkIfFileChanged(fromUrl string) bool {
 	now := time.Now()
 	client := &http.Client{Timeout: httpTimeout}
 	var maxTries = 30
 	for i := 0; i < maxTries; i++ {
-		response, err := client.Head(conf.RIVMDownloadURL)
+		response, err := client.Head(fromUrl)
 		if err != nil {
-			log.Printf("fout bij http HEAD %s: %s", conf.RIVMDownloadURL, err)
+			log.Printf("fout bij http HEAD %s: %s", fromUrl, err)
 			return false
 		} else {
 			lastModifiedStr := response.Header.Get("Last-Modified")
@@ -95,7 +95,7 @@ func checkIfFileChanged() bool {
 			if err != nil {
 				log.Printf("fout bij parsen van Last-Modified header (%s) : %s", lastModifiedStr, err)
 			}
-			log.Printf("(%d/%d) Last-Modified voor %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
+			log.Printf("(%d/%d) Last-Modified voor %s: %d %d:%d", i, maxTries, conf.RIVMDownloadURL1, lastModified.Day(), lastModified.Hour(), lastModified.Minute())
 			if lastModified.Day() == now.Day() {
 				return true
 			}
@@ -106,30 +106,30 @@ func checkIfFileChanged() bool {
 }
 
 // Return true if the file (URL) has changed
-func refreshInputFile() (bool, error) {
+func refreshInputFile(fromUrl, inputFile string) (bool, error) {
 	var err error
-	log.Printf("downloaden nieuwe data van %s ...", conf.RIVMDownloadURL)
+	log.Printf("downloaden nieuwe data van %s ...", fromUrl)
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 		Timeout: httpTimeout,
 	}
-	resp, err := client.Get(conf.RIVMDownloadURL)
+	resp, err := client.Get(fromUrl)
 	if err != nil {
-		log.Printf("fout bij downloaden RIVM data van %s: %s", conf.RIVMDownloadURL, err)
+		log.Printf("fout bij downloaden RIVM data van %s: %s", fromUrl, err)
 	} else {
 		if resp.StatusCode != http.StatusOK {
 			if resp != nil {
 				body, _ := ioutil.ReadAll(resp.Body)
-				log.Printf("fout bij downloaden RIVM data van %s, statuscode: %s, response: %s", conf.RIVMDownloadURL, resp.Status, body)
+				log.Printf("fout bij downloaden RIVM data van %s, statuscode: %s, response: %s", fromUrl, resp.Status, body)
 			} else {
-				log.Printf("fout bij downloaden RIVM data van %s, statuscode: %s", conf.RIVMDownloadURL, resp.Status)
+				log.Printf("fout bij downloaden RIVM data van %s, statuscode: %s", fromUrl, resp.Status)
 			}
 		} else {
 			defer resp.Body.Close()
 			// Create the file
-			newFileName := fmt.Sprintf("%s.new", conf.InputFile)
+			newFileName := fmt.Sprintf("%s.new", inputFile)
 			newFile, err := os.Create(newFileName)
 			if err != nil {
 				log.Printf("fout bij aanmaken bestand %s: %s", newFileName, err)
@@ -144,24 +144,24 @@ func refreshInputFile() (bool, error) {
 					newHashValue := fmt.Sprintf("%x", md5.Sum(fileContents))
 					log.Printf("md5 sum van %s: %s", newFileName, newHashValue)
 					if newHashValue != conf.HashValueOfInputFile {
-						if _, err := os.Stat(conf.InputFile); os.IsExist(err) {
-							err = os.Remove(conf.InputFile)
+						if _, err := os.Stat(conf.InputFile1); os.IsExist(err) {
+							err = os.Remove(conf.InputFile1)
 							if err != nil {
-								log.Printf("fout bij verwijderen van invoer bestand %s: %s", conf.InputFile, err)
+								log.Printf("fout bij verwijderen van invoer bestand %s: %s", inputFile, err)
 								return false, err
 							}
 						} else {
-							err = os.Rename(newFileName, conf.InputFile)
+							err = os.Rename(newFileName, inputFile)
 							if err != nil {
-								log.Printf("fout bij hernoemen %s naar %s: %s", newFileName, conf.InputFile, err)
+								log.Printf("fout bij hernoemen %s naar %s: %s", newFileName, inputFile, err)
 							} else {
-								log.Printf("bestand %s hernoemd naar %s", newFileName, conf.InputFile)
+								log.Printf("bestand %s hernoemd naar %s", newFileName, inputFile)
 								conf.HashValueOfInputFile = newHashValue
 								return true, err
 							}
 						}
 					} else {
-						log.Printf("hash waarde (%s) van %s is gelijk aan hash waarde van %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, conf.InputFile)
+						log.Printf("hash waarde (%s) van %s is gelijk aan hash waarde van %s (%s)", newHashValue, newFileName, conf.HashValueOfInputFile, inputFile)
 					}
 				}
 			}
@@ -173,9 +173,6 @@ func refreshInputFile() (bool, error) {
 func GetChartFile(chartInput *model.ChartInput) (*os.File, error) {
 	var err error
 	var file *os.File
-	//casesStyle := chart.Style{FillColor: drawing.ColorFromHex("9ddceb")}
-	//hospitalStyle := chart.Style{FillColor: drawing.ColorFromHex("63c522")}
-	//deceasedStyle := chart.Style{FillColor: drawing.ColorFromHex("ff7654")}
 	casesStyle := chart.Style{}
 	hospitalStyle := chart.Style{}
 	deceasedStyle := chart.Style{}
