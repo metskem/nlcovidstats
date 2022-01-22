@@ -37,19 +37,15 @@ func main() {
 	meDetails := "unknown"
 	if err == nil {
 		meDetails = fmt.Sprintf("BOT: ID:%d UserName:%s FirstName:%s LastName:%s", util.Me.ID, util.Me.UserName, util.Me.FirstName, util.Me.LastName)
-		log.Printf("Bot gestart: %s, versie:%s, bouw-tijdstip:%s, commit hash:%s", meDetails, conf.VersionTag, conf.BuildTime, conf.CommitHash)
+		log.Printf("Bot gestart: %s, bouw-tijdstip:%s, commit hash:%s", meDetails, conf.BuildTime, conf.CommitHash)
 		log.Printf("Gevonden chat ids: %v", conf.ChatIDs)
 	} else {
 		log.Printf("Bot.GetMe() gefaald: %v", err)
 	}
 
-	err = util.LoadInputFile1()
+	err = util.LoadInputFile(conf.InputFile)
 	if err != nil {
-		log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile1, err)
-	}
-	err = util.LoadInputFile2()
-	if err != nil {
-		log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
+		log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile, err)
 	}
 
 	// refresh the inputfile every day at 15:15
@@ -67,23 +63,17 @@ func main() {
 			delay := time.Hour * 24
 			log.Printf("herlaad schema met starttijd %s en vertraging %s", startTime, delay)
 			for range util.Cron(ctx, startTime, delay) {
-				if err = util.LoadInputFile1(); err != nil {
-					log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
+				err = util.LoadInputFile(conf.InputFile)
+				if err != nil {
+					log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile, err)
 					for _, id := range conf.ChatIDs {
 						_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
 					}
 				} else {
-					if err = util.LoadInputFile2(); err != nil {
-						log.Printf("fout bij laden invoer bestand %s: %s", conf.InputFile2, err)
-						for _, id := range conf.ChatIDs {
-							_, _ = util.Bot.Send(tgbotapi.NewMessage(id, fmt.Sprintf("Fout bij laden Nieuwe RIVM data: %s", err)))
-						}
-					} else {
-						for _, id := range conf.ChatIDs {
-							msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
-							msgConfig.ParseMode = tgbotapi.ModeMarkdown
-							_, _ = util.Bot.Send(msgConfig)
-						}
+					for _, id := range conf.ChatIDs {
+						msgConfig := tgbotapi.NewMessage(id, util.GetRecentData(1))
+						msgConfig.ParseMode = tgbotapi.ModeMarkdown
+						_, _ = util.Bot.Send(msgConfig)
 					}
 				}
 			}

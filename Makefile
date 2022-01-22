@@ -1,6 +1,5 @@
 BINARY=nlcovidstats
 # VERSION_TAG=`git describe 2>/dev/null | cut -f 1 -d '-' 2>/dev/null`
-$(eval VERSION_TAG = $(shell git describe 2>/dev/null | cut -f 1 -d '-' 2>/dev/null))
 
 # If no git tag is set, fallback to 'DEVELOPMENT'
 ifeq ($(strip ${VERSION_TAG}),)
@@ -11,8 +10,7 @@ COMMIT_HASH=`git rev-parse --short=8 HEAD 2>/dev/null`
 BUILD_TIME=`date +%FT%T%z`
 LDFLAGS=-ldflags "-s -w \
 	-X github.com/metskem/nlcovidstats/conf.CommitHash=${COMMIT_HASH} \
-	-X github.com/metskem/nlcovidstats/conf.BuildTime=${BUILD_TIME} \
-	-X github.com/metskem/nlcovidstats/conf.VersionTag=${VERSION_TAG}"
+	-X github.com/metskem/nlcovidstats/conf.BuildTime=${BUILD_TIME}"
 
 all: build linux darwin arm64
 
